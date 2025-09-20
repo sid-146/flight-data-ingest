@@ -1,0 +1,3 @@
+services:
+  context: ./airflow
+  dockerfile: ./airflow/Dockerfile
