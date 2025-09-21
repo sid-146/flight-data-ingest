@@ -23,6 +23,10 @@ services:
     networks:
       - flight-network
 
+
+    # use this to connect to the postgres using console.
+    # docker exec -it postgres psql -U airflow_user -d flight_db
+
   airflow:
     build:
       # context: ./airflow
