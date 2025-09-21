@@ -36,8 +36,8 @@ services:
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - airflow_logs:/opt/airflow/logs
-      - .airflow/plugins:/opt/airflow/plugins
-      - ./src:/opt/airflow/src
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/src:/opt/airflow/src
     ports:
       - "9099:9099"
     healthcheck:
