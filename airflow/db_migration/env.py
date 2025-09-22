@@ -34,13 +34,14 @@ target_metadata = BASE.metadata
 
 # Custom Functions
 def include_specific_schema(name, _type, parent):
+    # Todo: Understand this behavior
     # print(name, _type, parent)
     if _type == "schema":
         return name in ["flight_data"]
-    elif _type == "table":
-        # print(parent["schema_name"])
-        return parent["schema_name"] in ["flight_data"]
-    return False
+    # elif _type == "table":
+    #     # print(parent["schema_name"])
+    #     return parent["schema_name"] in ["flight_data"]
+    return True
 
 
 ###############################
