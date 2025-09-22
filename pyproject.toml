@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.16.5",
     "apache-airflow>=3.0.6",
-    "pydantic-settings>=2.10.1",
+    "psycopg2>=2.9.10",
 ]
