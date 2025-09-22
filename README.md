@@ -28,6 +28,8 @@
 
 ## **3. PostgreSQL Database Setup**
 
+- [-] Done
+
 1. Spin up a **PostgreSQL container** alongside Airflow or use a managed Postgres instance.
 2. Create a new database (e.g., `flights_db`).
 3. Define schema for storing flight data. Example logical design:
