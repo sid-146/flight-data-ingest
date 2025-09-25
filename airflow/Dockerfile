@@ -38,6 +38,7 @@ RUN pip install --no-cache-dir "apache-airflow[postgres]==${AIRFLOW_VERSION}" \
 
 
 COPY ./airflow/airflow-requirements.txt /tmp/airflow-requirements.txt
+COPY ./airflow/alembic.ini /opt/airflow/alembic.ini
 RUN pip install --no-cache-dir -r /tmp/airflow-requirements.txt
 
 COPY ./airflow/entrypoint.sh /entrypoint.sh
