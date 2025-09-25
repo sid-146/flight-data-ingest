@@ -52,6 +52,7 @@ def make_api_call(api: FlightRadar24API, flights: List[Flight]):
             result = future.result()
             results.append(result)
         except Exception as e:
+            # retry using url given in the error message.
             print(f"Failed to get detail")
 
 
