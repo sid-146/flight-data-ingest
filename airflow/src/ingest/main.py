@@ -4,11 +4,12 @@ from typing import List, Callable, Dict, Any, Tuple
 import gzip
 from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 
+import requests
 from FlightRadar24.api import FlightRadar24API
 from FlightRadar24 import Flight
 
 from core.logger import logger
-from core.utils import compress, generate_futures
+from core.utils import compress, generate_futures, upload_s3
 
 
 def get_flight_details(api: FlightRadar24API, flight: Flight):
@@ -33,19 +34,6 @@ def retry_with_other_option(url: str) -> dict:
     return
 
 
-# def generate_futures(
-#     func: Callable, *args: List[Tuple[Any, ...]], max_workers: int = 4
-# ) -> Dict[Future, Tuple[Any, ...]]:
-#     # generic function to create futures, returns dictionary {futures:args}
-#     futures: Dict[Future, Tuple[Any, ...]] = {}
-#     with ThreadPoolExecutor(max_workers=max_workers) as pool:
-#         for arg in args:
-#             future = pool.submit(func, *arg)
-#             futures[future] = arg
-
-#     return futures
-
-
 def make_api_call(api: FlightRadar24API, flights: List[Flight]):
     max_workers = min(len(flights), 4)
     results: List[dict] = []
@@ -58,6 +46,13 @@ def make_api_call(api: FlightRadar24API, flights: List[Flight]):
             args = futures[future]
             result = future.result()
             results.append(result)
+        except requests.exceptions.HTTPError as e:
+            _json = e.response.json()
+            print()
+            print(_json)
+            print(e)
+            print()
+            # retry_with_other_option()
         except Exception as e:
             # retry using url given in the error message.
             result = retry_with_other_option("")
@@ -74,5 +69,7 @@ def main():
     api = FlightRadar24API()
     flights = get_airlines_current_flight(api)
     results = make_api_call(api, flights)
-
+    store_path = os.path.join("store")
+    path = compress(results, store_path, ratio=8)
+    upload_s3(read_path=path)
     return
