@@ -31,7 +31,9 @@ def get_airlines_current_flight(api: FlightRadar24API):
 
 
 def retry_with_other_option(url: str) -> dict:
-    return
+    response = requests.get(url)
+    response.raise_for_status()
+    return response.json()
 
 
 def make_api_call(api: FlightRadar24API, flights: List[Flight]):
@@ -47,19 +49,9 @@ def make_api_call(api: FlightRadar24API, flights: List[Flight]):
             result = future.result()
             results.append(result)
         except requests.exceptions.HTTPError as e:
-            _json = e.response.json()
-            print()
-            print(_json)
-            print(e)
-            print()
-            # retry_with_other_option()
+            url = e.request.url
+            result = retry_with_other_option(url=url)
         except Exception as e:
-            # retry using url given in the error message.
-            result = retry_with_other_option("")
-            if not result:
-                print(f"Retry also failed for {args}")
-            else:
-                results.append(result)
             print(f"Failed to get detail for : {args} : {e}")
 
     return results
