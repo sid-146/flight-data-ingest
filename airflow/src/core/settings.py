@@ -1,3 +1,5 @@
+# Todo: Make it proper: Organize this properly, fetch from env do not hardcode.
+
 import os
 
 POSTGRES_DB: str = "flight_db"
