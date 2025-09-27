@@ -6,8 +6,9 @@ from sqlalchemy import pool
 from alembic import context
 
 # custom import
-from src.db.models import *
-from src.core.settings import postgres_connection_string, _schema
+from src.db.flight_models import *
+from src.db.monitoring_models import *
+from src.core.settings import postgres_connection_string, _schemas
 from src.db.config import BASE
 
 # this is the Alembic Config object, which provides
@@ -37,7 +38,7 @@ def include_specific_schema(name, _type, parent):
     # Todo: Understand this behavior
     # print(name, _type, parent)
     if _type == "schema":
-        return name in ["flight_data"]
+        return name in _schemas
     # elif _type == "table":
     #     # print(parent["schema_name"])
     #     return parent["schema_name"] in ["flight_data"]
@@ -93,7 +94,12 @@ def run_migrations_online() -> None:
         )
 
         with context.begin_transaction():
-            context.execute(f"CREATE SCHEMA IF NOT EXISTS {_schema}")
+            if isinstance(_schemas, str):
+                schemas = [_schemas]
+            else:
+                schemas = _schemas
+            for schema in schemas:
+                context.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
             context.run_migrations()
 
 
