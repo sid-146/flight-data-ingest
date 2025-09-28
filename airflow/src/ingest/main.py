@@ -10,58 +10,65 @@ from FlightRadar24 import Flight
 
 from core.logger import logger
 from core.utils import compress, generate_futures, upload_s3
-
-
-def get_flight_details(api: FlightRadar24API, flight: Flight):
-    result = api.get_flight_details(flight)
-    return result
-
-
-def get_airlines_current_flight(api: FlightRadar24API):
-    airlines = api.get_airlines()
-    flights: List[Flight] = []
-
-    for airline in airlines:
-        _flight = api.get_flights(airline)
-        flights.extend(_flight)
-
-    print(f"Found total flights : {len(flights)} for {len(airlines)} airlines.")
-
-    return flights
-
-
-def retry_with_other_option(url: str) -> dict:
-    response = requests.get(url)
-    response.raise_for_status()
-    return response.json()
-
-
-def make_api_call(api: FlightRadar24API, flights: List[Flight]):
-    max_workers = min(len(flights), 4)
-    results: List[dict] = []
-
-    args_list: List[Tuple[Any, ...]] = [(api, flight) for flight in flights]
-    futures = generate_futures(get_flight_details, args_list, max_workers=max_workers)
-
-    for future in as_completed(futures):
-        try:
-            args = futures[future]
-            result = future.result()
-            results.append(result)
-        except requests.exceptions.HTTPError as e:
-            url = e.request.url
-            result = retry_with_other_option(url=url)
-        except Exception as e:
-            print(f"Failed to get detail for : {args} : {e}")
-
-    return results
+from core.flight_api import FlightApiClient
 
 
 def main():
-    api = FlightRadar24API()
-    flights = get_airlines_current_flight(api)
-    results = make_api_call(api, flights)
-    store_path = os.path.join("store")
-    path = compress(results, store_path, ratio=8)
-    upload_s3(read_path=path)
-    return
+    print('Starting Ingestion DAG Process')
+    print('Inserting Log Record.')
+    
+
+
+# def get_flight_details(api: FlightRadar24API, flight: Flight):
+#     result = api.get_flight_details(flight)
+#     return result
+
+
+# def get_airlines_current_flight(api: FlightRadar24API):
+#     airlines = api.get_airlines()
+#     flights: List[Flight] = []
+
+#     for airline in airlines:
+#         _flight = api.get_flights(airline)
+#         flights.extend(_flight)
+
+#     print(f"Found total flights : {len(flights)} for {len(airlines)} airlines.")
+
+#     return flights
+
+
+# def retry_with_other_option(url: str) -> dict:
+#     response = requests.get(url)
+#     response.raise_for_status()
+#     return response.json()
+
+
+# def make_api_call(api: FlightRadar24API, flights: List[Flight]):
+#     max_workers = min(len(flights), 4)
+#     results: List[dict] = []
+
+#     args_list: List[Tuple[Any, ...]] = [(api, flight) for flight in flights]
+#     futures = generate_futures(get_flight_details, args_list, max_workers=max_workers)
+
+#     for future in as_completed(futures):
+#         try:
+#             args = futures[future]
+#             result = future.result()
+#             results.append(result)
+#         except requests.exceptions.HTTPError as e:
+#             url = e.request.url
+#             result = retry_with_other_option(url=url)
+#         except Exception as e:
+#             print(f"Failed to get detail for : {args} : {e}")
+
+#     return results
+
+
+# def main():
+#     api = FlightRadar24API()
+#     flights = get_airlines_current_flight(api)
+#     results = make_api_call(api, flights)
+#     store_path = os.path.join("store")
+#     path = compress(results, store_path, ratio=8)
+#     upload_s3(read_path=path)
+#     return
