@@ -5,7 +5,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "alembic>=1.16.5",
     "apache-airflow>=3.0.6",
     "boto3>=1.40.40",
     "flightradarapi>=1.4.0",

@@ -702,7 +702,6 @@ name = "flight-data-ingest"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "alembic" },
     { name = "apache-airflow" },
     { name = "boto3" },
     { name = "flightradarapi" },
@@ -711,7 +710,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "alembic", specifier = ">=1.16.5" },
     { name = "apache-airflow", specifier = ">=3.0.6" },
     { name = "boto3", specifier = ">=1.40.40" },
     { name = "flightradarapi", specifier = ">=1.4.0" },
