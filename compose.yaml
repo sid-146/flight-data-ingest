@@ -24,8 +24,8 @@ services:
       - flight-network
 
 
-    # use this to connect to the postgres using console.
-    # docker exec -it postgres psql -U airflow_user -d flight_db
+  # use this to connect to the postgres using console.
+  # docker exec -it postgres psql -U airflow_user -d flight_db
 
   airflow:
     build:
@@ -36,13 +36,12 @@ services:
       postgres:
         condition: service_healthy
     env_file:
-        - .env
+      - .env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - airflow_logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
       - ./airflow/src:/opt/airflow/src
-      - ./airflow/db_migration:/opt/airflow/db_migration
     ports:
       - "9099:9099"
     healthcheck:
