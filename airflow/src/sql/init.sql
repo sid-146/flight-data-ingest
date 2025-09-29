@@ -60,7 +60,7 @@ CREATE TABLE
 
 -- Table: flight_current_status
 CREATE TABLE
-    IF NOT EXISTS if not exists flight_data.flight_current_status (
+    IF NOT EXISTS flight_data.flight_current_status (
         flight_id VARCHAR PRIMARY KEY REFERENCES flight_data.flights (id),
         live BOOLEAN,
         status VARCHAR,
@@ -79,10 +79,25 @@ CREATE TABLE
         PRIMARY KEY (flight_id, event_ts_utc)
     );
 
+CREATE SEQUENCE IF NOT EXISTS monitoring.process_run_log_id_seq INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE;
+
+-- 3. Create the Table (without a PRIMARY KEY defined here)
 CREATE TABLE
     IF NOT EXISTS monitoring.process_run_log (
-        id BIGINT PRIMARY KEY,
+        id BIGINT, -- No PRIMARY KEY here yet
         dag_name VARCHAR,
-        starttime TIMESTAMP(3) default CURRENT_TIMESTAMP,
+        starttime TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,
         status VARCHAR
-    )
+    );
+
+-- 4. Set the default value for the 'id' column to use the sequence (Autoincrement)
+ALTER TABLE monitoring.process_run_log
+ALTER COLUMN id
+SET DEFAULT nextval ('monitoring.process_run_log_id_seq');
+
+-- 5. Add the PRIMARY KEY constraint to the 'id' column
+ALTER TABLE monitoring.process_run_log ADD CONSTRAINT process_run_log_pkey PRIMARY KEY (id);
+
+-- Optional: You can "own" the sequence by the table column, which ensures 
+-- that when the table or column is dropped, the sequence is dropped too.
+ALTER SEQUENCE monitoring.process_run_log_id_seq OWNED BY monitoring.process_run_log.id;
