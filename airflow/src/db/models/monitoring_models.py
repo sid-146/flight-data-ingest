@@ -10,11 +10,12 @@ from sqlalchemy import (
     BigInteger,
     DateTime,
     func,
+    Sequence,
 )
 
 # from sqlalchemy.orm import relationship
 
-from .config import BASE
+from src.db.config import BASE
 
 
 # class TestTable(BASE):
@@ -28,7 +29,12 @@ class ProcessRunLog(BASE):
     __tablename__ = "process_run_log"
     __table_args__ = {"schema": "monitoring"}
 
-    id: int = Column(BigInteger, nullable=False, primary_key=True, autoincrement=True)
+    id: int = Column(
+        BigInteger,
+        primary_key=True,
+        autoincrement=True,
+        server_default=Sequence("process_run_log_id_seq").next_value(),
+    )
     dag_name: str = Column(String, nullable=False)
     starttime: datetime = Column(DateTime, nullable=False, default=func.now())
     status: str = Column(String)
