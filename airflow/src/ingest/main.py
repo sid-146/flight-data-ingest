@@ -1,22 +1,46 @@
-import os
-import json
-from typing import List, Callable, Dict, Any, Tuple
-import gzip
-from concurrent.futures import ThreadPoolExecutor, as_completed, Future
+# import os
+# import json
+# from typing import List, Callable, Dict, Any, Tuple
+# import gzip
+# from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 
-import requests
-from FlightRadar24.api import FlightRadar24API
-from FlightRadar24 import Flight
+# import requests
+# from FlightRadar24.api import FlightRadar24API
+# from FlightRadar24 import Flight
 
-from core.logger import logger
-from core.utils import compress, generate_futures, upload_s3
-from core.flight_api import FlightApiClient
+# from core.logger import logger
+# from core.utils import compress, generate_futures, upload_s3
+# from core.flight_api import FlightApiClient
+
+from src.db.monitoring_db_client import MonitoringClient
+from src.db.models.monitoring_models import ProcessRunLog
+from src.db.BaseDBClient import QueryBuilder
 
 
 def main():
-    print('Starting Ingestion DAG Process')
-    print('Inserting Log Record.')
-    
+    print("Starting Ingestion DAG Process")
+    print("Inserting Log Record.")
+
+    monitoring_client = MonitoringClient()
+    new_p = ProcessRunLog(dag_name="Ingestion DAG", status="Running")
+    inserted_id = monitoring_client.insert(new_p)
+
+    # Building query using QueryBuilder Class
+    results = (
+        monitoring_client.query(ProcessRunLog)
+        .where(ProcessRunLog.id == inserted_id)
+        .all()
+    )
+
+    for results in results:
+        print(results.to_dict())
+
+    results = (
+        monitoring_client.query(ProcessRunLog).update({"status": "completed"}).all()
+    )
+
+    for result in results:
+        print("result : ", result.to_dict())
 
 
 # def get_flight_details(api: FlightRadar24API, flight: Flight):
