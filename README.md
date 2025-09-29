@@ -1,3 +1,7 @@
+```Note
+    - not able to connect to airflow, only delete airflow container and start again using compose up command
+```
+
 ## **1. Environment Setup**
 
 ### **Airflow Setup with Docker**
@@ -28,7 +32,7 @@
 
 ## **3. PostgreSQL Database Setup**
 
-- [-] Done
+-   [-] Done
 
 1. Spin up a **PostgreSQL container** alongside Airflow or use a managed Postgres instance.
 2. Create a new database (e.g., `flights_db`).

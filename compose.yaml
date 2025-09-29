@@ -12,7 +12,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./postgres_data:/var/lib/postgresql/data # Changed this not able to make this persistant
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -37,6 +37,8 @@ services:
         condition: service_healthy
     env_file:
       - .env
+    environment:
+      - PYTHONPATH=/opt/airflow
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - airflow_logs:/opt/airflow/logs
@@ -55,12 +57,12 @@ services:
 
 
 volumes:
-  postgres_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: F:/docker-images/volumes/pg_data
+  # postgres_data:
+  #   driver: local
+  #   driver_opts:
+  #     type: none
+  #     o: bind
+  #     device: F:/docker-images/volumes/pg_data
   airflow_logs:
     driver: local
     driver_opts:
