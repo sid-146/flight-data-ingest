@@ -15,7 +15,16 @@ from sqlalchemy import (
 )
 
 from sqlalchemy.orm import relationship
+
 from src.db.config import BASE
+
+
+# class TestTable(BASE):
+#     __tablename__ = "testTable"
+#     __table_args__ = {"schema": "monitoring"}
+#     id: str = Column(String, nullable=False, primary_key=True)
+#     dag_name: str = Column(String, nullable=False)
+
 
 class ProcessRunLog(BASE):
     __tablename__ = "process_run_log"
