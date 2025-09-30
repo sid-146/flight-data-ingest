@@ -1,10 +1,13 @@
+# Sort import properly
+import traceback
+
 import requests
-from typing import List, Dict, Any, Tuple
-from concurrent.futures import as_completed, Future
+from typing import List
+from concurrent.futures import as_completed
 
 from FlightRadar24.api import FlightRadar24API, Flight
 
-from core.utils import generate_futures
+from src.core.utils import generate_futures
 
 
 class FlightApiClient:
@@ -15,12 +18,14 @@ class FlightApiClient:
         airlines = self.api.get_airlines()
         return airlines
 
-    def _flight_details(self, flight):
-        flight = self.api.get_flight_details(flight)
+    @staticmethod
+    def _flight_details(api: FlightRadar24API, flight):
+        flight = api.get_flight_details(flight)
         return flight
 
-    def get_airline_current_flights(self, airline):
-        flights = self.api.get_flights(airline)
+    @staticmethod
+    def get_airline_current_flights(api: FlightRadar24API, airline):
+        flights = api.get_flights(airline)
         return flights
 
     def _retry_with_other_option(self, url):
@@ -30,7 +35,8 @@ class FlightApiClient:
 
     def get_airlines_current_flights(self, airlines: List[dict]) -> List[Flight]:
         futures = generate_futures(
-            self.get_airline_current_flights, [(airline) for airline in airlines]
+            self.get_airline_current_flights,
+            [(self.api, airline) for airline in airlines],
         )
 
         flights: List[dict] = []
@@ -38,18 +44,21 @@ class FlightApiClient:
             try:
                 args = futures[future]
                 _flights = future.result()
-                flights.append(_flights)
-            except requests.exceptions.HTTPError as e:
-                url = e.request.url
-                _flights = self._retry_with_other_option(url)
+                flights.extend(_flights)
+            # except requests.exceptions.HTTPError as e:
+            #     url = e.request.url
+            #     _flights = self._retry_with_other_option(url)
             except Exception as e:
-                print(f"Failed to get detail for : {args} : {e}")
+                traceback.print_exc()
+                print(f"Failed to get flight detail for : {args} : {e}")
 
+        print(f"flights : {flights}")
         return flights
 
     def get_flights_details(self, flights: List[Flight]):
+        print(flights[0])
         futures = generate_futures(
-            self._flight_details, [(flight) for flight in flights]
+            self._flight_details, [(self.api, flight) for flight in flights]
         )
 
         details: List[dict] = []
