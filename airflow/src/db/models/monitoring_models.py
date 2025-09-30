@@ -40,9 +40,9 @@ class ProcessRunLog(BASE):
     starttime: datetime = Column(DateTime, nullable=False, default=func.now())
     status: str = Column(String)
     task: str = Column(String, nullable=True)
-    error: str = Column(Text, nullable=True)
-    
-    files = relationship('IngestionFileLog', back_populate=)
+    errors: str = Column(Text, nullable=True)
+
+    files = relationship("IngestionFileLog", back_populates="process_run")
 
 
 class IngestionFileLog(BASE):
@@ -55,12 +55,7 @@ class IngestionFileLog(BASE):
         autoincrement=True,
         server_default=Sequence("ingestion_file_log_id_seq").next_value(),
     )
-    run_id:int = Column(
-        BigInteger,
-        ForeignKey("monitoring.process_run_log.id")
-    )
-    s3_key: str = Column(
-        String
-    ) 
-    
-    process_run = relationship("ProcessRunLog", back_populates='')
+    run_id: int = Column(BigInteger, ForeignKey("monitoring.process_run_log.id"))
+    s3_key: str = Column(String)
+
+    process_run = relationship("ProcessRunLog", back_populates="files")
