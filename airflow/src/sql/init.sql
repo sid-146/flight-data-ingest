@@ -106,7 +106,7 @@ ALTER SEQUENCE monitoring.process_run_log_id_seq OWNED BY monitoring.process_run
 -- Updating Table to add task and error columns.
 ALTER TABLE monitoring.process_run_log
 ADD COLUMN task varchar,
-ADD COLUMN "errors" TEXT
+ADD COLUMN "errors" TEXT,
 ADD COLUMN record_created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;
 
 -- Created Table ingestion file log
@@ -125,6 +125,6 @@ ALTER TABLE monitoring.ingestion_file_log
 ALTER COLUMN id
 SET DEFAULT nextval ('monitoring.ingestion_file_log_id_seq');
 
-ALTER TABLE monitoring.ingestion_file_log ADD CONSTRAINT process_run_log_pkey PRIMARY KEY (id);
+ALTER TABLE monitoring.ingestion_file_log ADD CONSTRAINT ingestion_file_log_pkey PRIMARY KEY (id);
 
 ALTER SEQUENCE monitoring.ingestion_file_log_id_seq OWNED BY monitoring.ingestion_file_log.id;
