@@ -102,3 +102,8 @@ ALTER TABLE monitoring.process_run_log ADD CONSTRAINT process_run_log_pkey PRIMA
 -- Optional: You can "own" the sequence by the table column, which ensures 
 -- that when the table or column is dropped, the sequence is dropped too.
 ALTER SEQUENCE monitoring.process_run_log_id_seq OWNED BY monitoring.process_run_log.id;
+
+-- Updating Table to add task and error columns.
+ALTER TABLE monitoring.process_run_log
+ADD COLUMN task varchar,
+ADD COLUMN "errors" TEXT;
