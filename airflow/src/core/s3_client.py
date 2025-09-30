@@ -2,7 +2,7 @@ import io
 import os
 import gzip
 import json
-from typing import ByteString
+from typing import ByteString, List
 
 import boto3
 
@@ -41,12 +41,12 @@ class S3Client:
         buckets = self.s3_client.buckets.all()
         print(*[bucket.name for bucket in buckets], sep="\n\t")
 
-    def put_compressed_object(self, results, bucket_name, put_path, ratio: int = 7):
+    def put_compressed_object(self, data:List[dict], bucket_name, put_path, ratio: int = 7):
         s3_key = os.path.join(put_path, "data.json.gz")
 
         buffer = io.BytesIO()
         with gzip.GzipFile(fileobj=buffer, mode="wb", compresslevel=ratio) as f:
-            f.write(json.dumps(results, indent=2).encode("utf-8"))
+            f.write(json.dumps(data, indent=2).encode("utf-8"))
 
         buffer.seek(0)
         self.s3_client.upload_fileobj(buffer, bucket_name, s3_key)
