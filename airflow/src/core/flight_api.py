@@ -1,8 +1,8 @@
 import requests
-from typing import List
-from concurrent.futures import as_completed
+from typing import List, Dict, Any, Tuple
+from concurrent.futures import as_completed, Future
 
-from FlightRadar24.api import FlightRadar24API
+from FlightRadar24.api import FlightRadar24API, Flight
 
 from core.utils import generate_futures
 
@@ -15,7 +15,7 @@ class FlightApiClient:
         airlines = self.api.get_airlines()
         return airlines
 
-    def get_flight_details(self, flight):
+    def _flight_details(self, flight):
         flight = self.api.get_flight_details(flight)
         return flight
 
@@ -28,21 +28,39 @@ class FlightApiClient:
         response.raise_for_status()
         return response.json()
 
-    def get_airlines_current_flights(self, airlines: List[dict]):
+    def get_airlines_current_flights(self, airlines: List[dict]) -> List[Flight]:
         futures = generate_futures(
             self.get_airline_current_flights, [(airline) for airline in airlines]
         )
 
-        results: List[dict] = []
+        flights: List[dict] = []
         for future in as_completed(futures):
             try:
                 args = futures[future]
-                result = future.result()
-                results.append(result)
+                _flights = future.result()
+                flights.append(_flights)
             except requests.exceptions.HTTPError as e:
                 url = e.request.url
-                result = self._retry_with_other_option(url)
+                _flights = self._retry_with_other_option(url)
             except Exception as e:
                 print(f"Failed to get detail for : {args} : {e}")
 
-        return results
+        return flights
+
+    def get_flights_details(self, flights: List[Flight]):
+        futures = generate_futures(
+            self._flight_details, [(flight) for flight in flights]
+        )
+
+        details: List[dict] = []
+        for future in as_completed(futures):
+            try:
+                args = futures[future]
+                _detail = future.result()
+                details.append(_detail)
+            except requests.exceptions.HTTPError as e:
+                url = e.request.url
+                _details = self._retry_with_other_option(url)
+                details.append(_details)
+            except Exception as e:
+                print(f"Failed to get detail for : {args} : {e}")
