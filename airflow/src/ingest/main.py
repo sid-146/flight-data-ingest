@@ -12,13 +12,19 @@
 # from core.utils import compress, generate_futures, upload_s3
 # from core.flight_api import FlightApiClient
 
+import traceback
+
 from src.db.monitoring_db_client import MonitoringClient
 from src.db.models.monitoring_models import ProcessRunLog
 from src.db.BaseDBClient import QueryBuilder
 
+from src.core.flight_api import FlightApiClient
+from src.core.s3_client import S3Client
 
-def main():
+
+def insert_log_entry():
     print("Starting Ingestion DAG Process")
+    print("Starting Insert Log Entry Task")
     print("Inserting Log Record.")
 
     monitoring_client = MonitoringClient()
@@ -35,12 +41,48 @@ def main():
     for results in results:
         print(results.to_dict())
 
-    results = (
-        monitoring_client.query(ProcessRunLog).update({"status": "completed"}).all()
-    )
+    # results = (
+    #     monitoring_client.query(ProcessRunLog).update({"status": "completed"}).all()
+    # )
 
-    for result in results:
-        print("result : ", result.to_dict())
+    # for result in results:
+    #     print("result : ", result.to_dict())
+
+    # print("")
+
+
+def update_monitoring_record(model, update_dict: dict):
+    monitoring_client = MonitoringClient()
+    results = monitoring_client.query(model).update(update_dict).all()
+    return results
+
+
+def ingest_data():
+    print("Starting Data Ingestion task.")
+    api = FlightApiClient()
+
+    try:
+        airlines = api.get_airlines()
+        flights = api.get_airlines_current_flights(airlines)
+        details = api.get_flights_details(flights)
+    except Exception as e:
+        print(traceback.print_exc())
+        print(f"Failed to ingest data with : {e.__class__} : {e}")
+        update_monitoring_record(
+            ProcessRunLog,
+            {
+                "status": "failed",
+                "task": "ingestion_data",
+                "error": f"Failed to ingest data with : {e.__class__} : {e}",
+            },
+        )
+
+
+def upload_s3():
+    s3_client = S3Client(bucket="", access_key="", secret_key="", region="ap-south-1")
+    s3_client.put_compressed_object(
+        data=details,
+    )
 
 
 # def get_flight_details(api: FlightRadar24API, flight: Flight):
