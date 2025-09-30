@@ -79,6 +79,7 @@ CREATE TABLE
         PRIMARY KEY (flight_id, event_ts_utc)
     );
 
+-- Create sequence for autoincrement.
 CREATE SEQUENCE IF NOT EXISTS monitoring.process_run_log_id_seq INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE;
 
 -- 3. Create the Table (without a PRIMARY KEY defined here)
