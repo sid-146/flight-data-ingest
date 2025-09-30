@@ -14,9 +14,12 @@ RUN apt-get update && \
     curl \
     git \
     # header files needed if building psycopg2 from source
-    libpq-dev \ 
+    libpq-dev \
     procps \
     && rm -rf /var/lib/api/lists/*
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh 
+ENV PATH="/root/.local/bin:${PATH}"
 
 
 # Check if group/user already exist if not then create
@@ -26,7 +29,7 @@ RUN id airflow || useradd -r -u 50000 -g airflow -d ${AIRFLOW_HOME} -s /bin/bash
 # Creating directories with proper ownership
 RUN mkdir -p ${AIRFLOW_HOME} && \ 
     mkdir -p ${AIRFLOW_HOME}/dags && \
-    mkdir -p {AIRFLOW_HOME}/logs && \
+    mkdir -p ${AIRFLOW_HOME}/logs && \
     mkdir ${AIRFLOW_HOME}/plugins && \
     chown -R 50000:50000 ${AIRFLOW_HOME} && \
     chmod -R 755 ${AIRFLOW_HOME}
@@ -38,10 +41,16 @@ RUN pip install --no-cache-dir "apache-airflow[postgres]==${AIRFLOW_VERSION}" \
 
 
 COPY ./airflow/airflow-requirements.txt /tmp/airflow-requirements.txt
-COPY ./airflow/alembic.ini /opt/airflow/alembic.ini
+# COPY ./airflow/alembic.ini /opt/airflow/alembic.ini
 RUN pip install --no-cache-dir -r /tmp/airflow-requirements.txt
 
 COPY ./airflow/entrypoint.sh /entrypoint.sh
+COPY ../pyproject.toml /pyproject.toml
+
+RUN uv pip compile pyproject.toml -o requirements.txt
+RUN uv pip install -r requirements.txt --system
+
+
 RUN chmod +x /entrypoint.sh
 
 USER airflow
