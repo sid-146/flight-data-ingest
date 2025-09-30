@@ -12,11 +12,12 @@
 # from core.utils import compress, generate_futures, upload_s3
 # from core.flight_api import FlightApiClient
 
+import os
 import traceback
+from datetime import datetime
 
 from src.db.monitoring_db_client import MonitoringClient
 from src.db.models.monitoring_models import ProcessRunLog
-from src.db.BaseDBClient import QueryBuilder
 
 from src.core.flight_api import FlightApiClient
 from src.core.s3_client import S3Client
@@ -38,6 +39,8 @@ def insert_log_entry():
         .all()
     )
 
+    if not isinstance(results, list):
+        results = [results]
     for results in results:
         print(results.to_dict())
 
@@ -51,9 +54,11 @@ def insert_log_entry():
     # print("")
 
 
-def update_monitoring_record(model, update_dict: dict):
+def update_monitoring_record(model, update_dict: dict, _id):
     monitoring_client = MonitoringClient()
-    results = monitoring_client.query(model).update(update_dict).all()
+    results = (
+        monitoring_client.query(model).update(update_dict).where(model.id == _id).all()
+    )
     return results
 
 
@@ -63,8 +68,11 @@ def ingest_data():
 
     try:
         airlines = api.get_airlines()
-        flights = api.get_airlines_current_flights(airlines)
+        print(f"Got {len(airlines)} airlines.")
+        flights = api.get_airlines_current_flights(airlines[:1000])
+        print(f"Got {len(flights)} flights")  # Getting 0 flights IDK why....
         details = api.get_flights_details(flights)
+        print(f"Got Details for flight : {len(details)}")
     except Exception as e:
         print(traceback.print_exc())
         print(f"Failed to ingest data with : {e.__class__} : {e}")
@@ -79,9 +87,13 @@ def ingest_data():
 
 
 def upload_s3():
+    details = []
     s3_client = S3Client(bucket="", access_key="", secret_key="", region="ap-south-1")
+    bucket = os.getenv("S3_BUCKET")
+    folder_name = f"flights_data_{datetime.now().strftime('%y_%m_%d_%H_%M_%S')}"
+
     s3_client.put_compressed_object(
-        data=details,
+        data=details, bucket_name=bucket, put_path=folder_name
     )
 
 
