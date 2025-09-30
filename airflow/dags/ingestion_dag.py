@@ -3,7 +3,7 @@ from datetime import datetime
 from airflow.operators.python import PythonOperator
 from airflow import DAG
 
-from src.ingest.main import main
+from src.ingest.main import insert_log_entry,ingest_data
 
 
 with DAG(
@@ -13,6 +13,7 @@ with DAG(
     schedule="*/5 * * * *",
     catchup=False,
 ) as dag:
-    run_task = PythonOperator(task_id="ingestion", python_callable=main)
+    process_log_insert_task = PythonOperator(task_id="Process Log Insertion Task", python_callable=insert_log_entry)
+    ingest_data_task = PythonOperator(task_id = "Data Extraction Task", python_callable=ingest_data)
 
-run_task
+process_log_insert_task >> ingest_data_task
