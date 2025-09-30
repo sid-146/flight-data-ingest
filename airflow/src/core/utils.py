@@ -19,10 +19,11 @@ def compress(results: list, store_path: str, ratio: int = 5):
 
 
 def generate_futures(
-    func: Callable, *args: List[Tuple[Any, ...]], max_workers: int = 4
+    func: Callable, args: List[Tuple[Any, ...]], max_workers: int = 4
 ) -> Dict[Future, Tuple[Any, ...]]:
     # generic function to create futures, returns dictionary {futures:args}
     futures: Dict[Future, Tuple[Any, ...]] = {}
+    print(f"Creating futures for {func.__name__}")
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         for arg in args:
             future = pool.submit(func, *arg)
