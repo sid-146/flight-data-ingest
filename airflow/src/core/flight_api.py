@@ -25,7 +25,7 @@ class FlightApiClient:
 
     @staticmethod
     def get_airline_current_flights(api: FlightRadar24API, airline):
-        flights = api.get_flights(airline)
+        flights = api.get_flights(airline["ICAO"])
         return flights
 
     def _retry_with_other_option(self, url):
@@ -45,9 +45,6 @@ class FlightApiClient:
                 args = futures[future]
                 _flights = future.result()
                 flights.extend(_flights)
-            # except requests.exceptions.HTTPError as e:
-            #     url = e.request.url
-            #     _flights = self._retry_with_other_option(url)
             except Exception as e:
                 traceback.print_exc()
                 print(f"Failed to get flight detail for : {args} : {e}")
@@ -73,3 +70,5 @@ class FlightApiClient:
                 details.append(_details)
             except Exception as e:
                 print(f"Failed to get detail for : {args} : {e}")
+
+        return details
