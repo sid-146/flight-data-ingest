@@ -19,6 +19,12 @@ from proxy_list import ProxyList
 
 proxy_list = ProxyList()
 
+proxies = [host + port for host, port in proxy_list.get_all_proxies()]
+proxies_dict = {
+    "http": random.choice(proxies),
+    "https": random.choice(proxies),
+}
+
 # Flight Current Data: https://data-live.flightradar24.com/clickhandler/?flight=3c75b726
 # airlines_data
 
@@ -103,10 +109,16 @@ class FlightApiClient:
     def get_airline_flights(airlines):
         # Get list of airlines
         # Filter navy, army, airforce, school university
+        # Create args for futures (session, url, headers, params, timeout, proxies)
         # Create Futures
         # Call api, with diff proxy every time.
 
+        console.info(f"Before filtering : {len(airlines)}")
         airlines = list(filter(_airline_criteria_, airlines))
+        console.info(f"After filtering : {len(airlines)}")
+
+        session = requests.Session()
+        session.proxies
 
     # * New methods above this, below need to be removed
 
