@@ -7,6 +7,7 @@ from concurrent.futures import as_completed
 
 from FlightRadar24.api import FlightRadar24API, Flight
 
+from src.core.logger import console
 from src.core.utils import generate_futures
 
 
