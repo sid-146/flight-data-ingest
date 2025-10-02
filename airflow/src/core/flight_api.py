@@ -5,25 +5,18 @@ import traceback
 from abc import ABC
 
 import requests
-from typing import List
+from typing import List, Literal
 from concurrent.futures import as_completed
 
 from FlightRadar24.api import FlightRadar24API, Flight
 
 
-from logger import console
-from utils import generate_futures
+from src.core.logger import console
+from src.core.utils import generate_futures, get_content
 
 
-from proxy_list import ProxyList
+from fp.fp import FreeProxy
 
-proxy_list = ProxyList()
-
-proxies = [host + port for host, port in proxy_list.get_all_proxies()]
-proxies_dict = {
-    "http": random.choice(proxies),
-    "https": random.choice(proxies),
-}
 
 # Flight Current Data: https://data-live.flightradar24.com/clickhandler/?flight=3c75b726
 # airlines_data
@@ -101,107 +94,186 @@ def _airline_criteria_(airline):
 class FlightApiClient:
     def __init__(self):
         self.api = FlightRadar24API()
+        self.proxies = FreeProxy().get_proxy_list(repeat=1)
 
     def get_airlines(self):
         airlines = self.api.get_airlines()
         return airlines
 
-    def get_airline_flights(airlines):
-        # Get list of airlines
-        # Filter navy, army, airforce, school university
-        # Create args for futures (session, url, headers, params, timeout, proxies)
-        # Create Futures
-        # Call api, with diff proxy every time.
+    def _airline_criteria_(airline):
+        name = airline["Name"].lower()
+        if (
+            "army" in name
+            or "force" in name
+            or "navy" in name
+            or "school" in name
+            or "university" in name
+        ) and airline["n_aircrafts"] > 20:
+            return airline
 
-        console.info(f"Before filtering : {len(airlines)}")
-        airlines = list(filter(_airline_criteria_, airlines))
-        console.info(f"After filtering : {len(airlines)}")
+    def __make_api_call(
+        session: requests.Session,
+        method: Literal["POST", "GET"],
+        url,
+        headers,
+        params,
+        proxy,
+    ):
+        response = session.request(
+            method,
+            url,
+            params=params,
+            headers=headers,
+            proxies=proxy,
+        )
+        return response
 
+    def get_airline_flights(self, airlines):
+
+        console.info(f"Airlines before filtering : {len(airlines)}")
+        airlines = list(filter(self._airline_criteria_, airlines))
+        console.info(f"Airlines after filtering : {len(airlines)}")
+
+        flights = []
         session = requests.Session()
-        session.proxies
+        session.get("https://www.flightradar24.com")
+        request_params = self.api.get_flight_tracker_config().__dict__
+        url = Core.data_live_base_url + "/zones/fcgi/feed.js"
+
+        args = []
+
+        for airline in airlines:
+            request_params["airline"] = airline
+            _proxy = random.choice(self.proxies)
+            args.append[
+                (
+                    "GET",
+                    url,
+                    request_params,
+                    Core.headers,
+                    {"http": _proxy, "https": _proxy},
+                )
+            ]
+
+        futures = generate_futures(self.__make_api_call, args)
+        for future in as_completed(futures):
+            try:
+                response: requests.Response = future.result()
+                response.raise_for_status()
+                content = get_content(response)
+
+                for flight_id, flight_info in content.items():
+                    if not flight_id[0].isnumeric():
+                        continue
+
+                    flight = Flight(flight_id, flight_info)
+                    flights.append(flight)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 429:
+                    console.error("Failed due to status code 429")
+                console.error(f"HTTP Error : {e} : {e.__class__}")
+                console.error(f"Args passed : {args}")
+                console.warning("Decide what to do with error.")
+            except Exception as e:
+                console.error(f"Failed to get airline : {e.__class__} : {e}")
+                console.error(f"Args passed : {args}")
+
+        session.close()
+        return flights
+
+    def get_flight_details(self, flights: List[Flight]) -> List[dict]:
+        # Build up args
+        # Use proxies for each different request
+        # Create Future
+        # Iterate over futures as completed
+        # get result from the future
+        # Extract content from the future
+        # Append to a list of details
+
+        return
 
     # * New methods above this, below need to be removed
 
-    @staticmethod
-    def _flight_details(api: FlightRadar24API, flight):
-        flight = api.get_flight_details(flight)
-        return flight
+    # @staticmethod
+    # def _flight_details(api: FlightRadar24API, flight):
+    #     flight = api.get_flight_details(flight)
+    #     return flight
 
-    @staticmethod
-    def get_airline_current_flights(api: FlightRadar24API, airline):
-        flights = api.get_flights(airline["ICAO"])
-        return flights
+    # @staticmethod
+    # def get_airline_current_flights(api: FlightRadar24API, airline):
+    #     flights = api.get_flights(airline["ICAO"])
+    #     return flights
 
-    def _retry_with_other_option(self, url):
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
+    # def _retry_with_other_option(self, url):
+    #     response = requests.get(url)
+    #     response.raise_for_status()
+    #     return response.json()
 
-    def get_airlines_current_flights(self, airlines: List[dict]) -> List[Flight]:
-        console.info(f"Getting all flights of : {len(airlines)}")
-        futures = generate_futures(
-            self.get_airline_current_flights,
-            [(self.api, airline) for airline in airlines],
-        )
+    # def get_airlines_current_flights(self, airlines: List[dict]) -> List[Flight]:
+    #     console.info(f"Getting all flights of : {len(airlines)}")
+    #     futures = generate_futures(
+    #         self.get_airline_current_flights,
+    #         [(self.api, airline) for airline in airlines],
+    #     )
 
-        flights: List[dict] = []
-        for future in as_completed(futures):
-            try:
-                args = futures[future]
-                _flights = future.result()
-                flights.extend(_flights)
-            except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 429:
-                    max_retries = 4
-                    delay = 1  # 2 seconds delay
-                    for i in range(max_retries):
-                        console.warning(f"Rate Limit hit. {args[1]['ICAO']}")
-                        time.sleep(delay)
-                        _flights = self.get_airline_current_flights(
-                            self.api, args[1]["ICAO"]
-                        )
-                        delay = (delay * 2) + (random.uniform(0, 1))
-                        flights.append(_flights)
-                else:
-                    raise e
-            except Exception as e:
-                traceback.print_exc()
-                console.error(f"Failed to get flight detail for : {args} : {e}")
+    #     flights: List[dict] = []
+    #     for future in as_completed(futures):
+    #         try:
+    #             args = futures[future]
+    #             _flights = future.result()
+    #             flights.extend(_flights)
+    #         except requests.exceptions.HTTPError as e:
+    #             if e.response.status_code == 429:
+    #                 max_retries = 4
+    #                 delay = 1  # 2 seconds delay
+    #                 for i in range(max_retries):
+    #                     console.warning(f"Rate Limit hit. {args[1]['ICAO']}")
+    #                     time.sleep(delay)
+    #                     _flights = self.get_airline_current_flights(
+    #                         self.api, args[1]["ICAO"]
+    #                     )
+    #                     delay = (delay * 2) + (random.uniform(0, 1))
+    #                     flights.append(_flights)
+    #             else:
+    #                 raise e
+    #         except Exception as e:
+    #             traceback.print_exc()
+    #             console.error(f"Failed to get flight detail for : {args} : {e}")
 
-        console.debug(f"flights : {len(flights)}")
-        return flights
+    #     console.debug(f"flights : {len(flights)}")
+    #     return flights
 
-    def get_flights_details(self, flights: List[Flight]):
-        console.info(f"Getting flight details : {len(flights)}")
-        futures = generate_futures(
-            self.api.get_flight_details,
-            [(flight) for flight in flights],
-        )
+    # def get_flights_details(self, flights: List[Flight]):
+    #     console.info(f"Getting flight details : {len(flights)}")
+    #     futures = generate_futures(
+    #         self.api.get_flight_details,
+    #         [(flight) for flight in flights],
+    #     )
 
-        details: List[dict] = []
-        for future in as_completed(futures):
-            try:
-                args = futures[future]
-                _detail = future.result()
-                details.append(_detail)
-            except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 429:
-                    max_retries = 4
-                    delay = 1
-                    for _ in range(max_retries):
-                        console.warning(f"Rate Limit hit. {args}")
-                        time.sleep(delay)
-                        _detail = self.api.get_flight_details(args)
-                        delay = (delay * 2) + random.uniform(0, 1)
-                        details.append(_detail)
-                else:
-                    console.critical(
-                        "Not able to get it through package, trying direct api."
-                    )
-                    url = e.request.url
-                    _details = self._retry_with_other_option(url)
-                    details.append(_details)
-            except Exception as e:
-                console.error(f"Failed to get detail for : {args} : {e}")
+    #     details: List[dict] = []
+    #     for future in as_completed(futures):
+    #         try:
+    #             args = futures[future]
+    #             _detail = future.result()
+    #             details.append(_detail)
+    #         except requests.exceptions.HTTPError as e:
+    #             if e.response.status_code == 429:
+    #                 max_retries = 4
+    #                 delay = 1
+    #                 for _ in range(max_retries):
+    #                     console.warning(f"Rate Limit hit. {args}")
+    #                     time.sleep(delay)
+    #                     _detail = self.api.get_flight_details(args)
+    #                     delay = (delay * 2) + random.uniform(0, 1)
+    #                     details.append(_detail)
+    #             else:
+    #                 console.critical(
+    #                     "Not able to get it through package, trying direct api."
+    #                 )
+    #                 url = e.request.url
+    #                 _details = self._retry_with_other_option(url)
+    #                 details.append(_details)
+    #         except Exception as e:
+    #             console.error(f"Failed to get detail for : {args} : {e}")
 
-        return details
+    #     return details
