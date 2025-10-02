@@ -7,8 +7,10 @@ Todo:
 -   using compose start sometimes airflow server does starts. Container is online but not able to access airflow.
 
 Todo: Code
-- Add logger please 😭😭
-- Create a container, if there is issue in calling flight api through container....
+
+-   Add logger please 😭😭
+-   Create a container, if there is issue in calling flight api through container....
+-   Sort imports
 
 # Execution Plan
 
