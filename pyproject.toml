@@ -8,4 +8,5 @@ dependencies = [
     "boto3>=1.40.40",
     "bs4>=0.0.2",
     "flightradarapi>=1.4.0",
+    "free-proxy>=1.1.3",
 ]
