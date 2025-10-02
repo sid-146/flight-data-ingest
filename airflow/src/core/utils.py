@@ -2,9 +2,11 @@ import gzip
 import json
 import os
 from datetime import datetime
-from typing import Callable, Tuple, Dict, List, Any
+from typing import Callable, Tuple, Dict, List, Any, Union
 from concurrent.futures import ThreadPoolExecutor, Future
-from logger import console
+from src.core.logger import console
+from requests import Response
+import brotli
 
 
 def compress(results: list, store_path: str, ratio: int = 5):
@@ -32,3 +34,23 @@ def generate_futures(
             futures[future] = arg
 
     return futures
+
+
+def get_content(response: Response) -> Union[Dict, bytes]:
+    __content_encodings = {
+        "": lambda x: x,
+        "br": brotli.decompress,
+        "gzip": gzip.decompress,
+    }
+
+    content = response.content
+    encoding = response.headers.get("Content-Encoding", "")
+    content_type = response.headers["Content-Type"]
+
+    try:
+        content = __content_encodings[encoding](content)
+    except Exception:
+        pass
+
+    if "application/json" in content_type:
+        return json.loads(content)
