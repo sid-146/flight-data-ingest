@@ -3,12 +3,13 @@ import time
 import random
 import traceback
 from abc import ABC
+import dataclasses
 
 import requests
 from typing import List, Literal
 from concurrent.futures import as_completed
 
-from FlightRadar24.api import FlightRadar24API, Flight
+from FlightRadar24.api import FlightRadar24API, Flight, Countries
 
 
 from src.core.logger import console
@@ -60,35 +61,6 @@ class Core(ABC):
         "sec-fetch-site": "same-site",
         "user-agent": "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36",
     }
-
-    @staticmethod
-    def http_get(session: requests.Session, url, headers, params, timeout, proxies):
-        response = session.get(
-            url=url,
-            headers=headers,
-            params=params,
-            timeout=timeout,
-            proxies=proxies,
-        )
-
-        response.raise_for_status()
-        return response
-
-    @staticmethod
-    def http_post():
-        return
-
-
-def _airline_criteria_(airline):
-    name = airline["Name"].lower()
-    if (
-        "army" in name
-        or "force" in name
-        or "navy" in name
-        or "school" in name
-        or "university" in name
-    ) and airline["n_aircrafts"] > 20:
-        return airline
 
 
 class FlightApiClient:
@@ -147,10 +119,11 @@ class FlightApiClient:
             _proxy = random.choice(self.proxies)
             args.append[
                 (
+                    session,
                     "GET",
                     url,
-                    request_params,
                     Core.headers,
+                    request_params,
                     {"http": _proxy, "https": _proxy},
                 )
             ]
@@ -190,6 +163,57 @@ class FlightApiClient:
         # Extract content from the future
         # Append to a list of details
 
+        args = []
+        session = requests.Session()
+        session.get("http://www.flightradar24.com")
+        params = dataclasses.asdict(self.api.get_flight_tracker_config())
+        details = []
+
+        for flight in flights:
+            _proxy = random.choice(self.proxies)
+            url = Core.flight_data_url.format(flight.id)
+            args.append(
+                (
+                    "GET",
+                    url,
+                    Core.headers,
+                    params,
+                    {"http": _proxy, "https": _proxy},
+                )
+            )
+
+        futures = generate_futures(self._make_api_call, args)
+        for future in as_completed(futures):
+            try:
+                response: requests.Response = future.result()
+                response.raise_for_status()
+                content = get_content(response)
+                details.append(content)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 429:
+                    console.error("Failed due to status code 429")
+                console.error(f"HTTP Error : {e} : {e.__class__}")
+                console.error(f"Args passed : {args}")
+                console.warning("Decide what to do with error.")
+            except Exception as e:
+                console.error(f"Failed to get airline : {e.__class__} : {e}")
+                console.error(f"Args passed : {args}")
+
+        session.close()
+        return details
+
+    def get_airports(self, countries: List[Countries]):
+        # Start with two or three countries, Slowly role out for more country.
+        return self.api.get_airports(countries)
+
+    def get_airport_details(self, codes: str):
+        # Build up args
+        # Use proxies for each different request
+        # Create Future
+        # Iterate over futures as completed
+        # get result from the future
+        # Extract content from the future
+        # Append to a list of details
         return
 
     # * New methods above this, below need to be removed
