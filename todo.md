@@ -11,6 +11,9 @@ Todo: Code
 -   Add logger please 😭😭
 -   Create a container, if there is issue in calling flight api through container....
 -   Sort imports
+-   Complete airport details function.
+-   For starting keep the flights and airports counts low.
+-   Airports details contains more information which is not present in current schema. (Thus Schema update is needed.)
 
 # Execution Plan
 
