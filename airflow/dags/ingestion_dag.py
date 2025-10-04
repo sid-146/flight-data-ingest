@@ -10,7 +10,7 @@ with DAG(
     dag_id="data_ingestion_DAG",
     description="DAG to ingest data from api and upload to s3",
     start_date=datetime(2025, 9, 29),
-    schedule="*/5 * * * *",
+    schedule="*/15 * * * *",
     catchup=False,
 ) as dag:
     process_log_insert_task = PythonOperator(
