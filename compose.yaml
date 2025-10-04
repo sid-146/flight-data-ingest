@@ -46,6 +46,7 @@ services:
       - ./airflow/src:/opt/airflow/src
     ports:
       - "9099:9099"
+      - "8793:8793"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9099/health"]
       interval: 30s

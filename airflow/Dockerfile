@@ -57,5 +57,7 @@ USER airflow
 WORKDIR ${AIRFLOW_HOME}
 
 EXPOSE 9099
+# For logs 8793
+EXPOSE 8793
 
 CMD ["/entrypoint.sh"]
