@@ -66,6 +66,9 @@ class Core(ABC):
 class FlightApiClient:
     def __init__(self):
         self.api = FlightRadar24API()
+        # Todo:
+        # update this code to get a working proxy list.
+        # Sometime is getting Connection timeout error
         self.proxies = FreeProxy().get_proxy_list(repeat=1)
 
     def get_airlines(self):
@@ -108,7 +111,7 @@ class FlightApiClient:
 
         flights = []
         session = requests.Session()
-        session.get("https://www.flightradar24.com")
+        session.get(Core.flightradar_base_url)
         request_params = self.api.get_flight_tracker_config().__dict__
         url = Core.data_live_base_url + "/zones/fcgi/feed.js"
 
@@ -165,7 +168,7 @@ class FlightApiClient:
 
         args = []
         session = requests.Session()
-        session.get("http://www.flightradar24.com")
+        session.get(Core.flightradar_base_url)
         params = dataclasses.asdict(self.api.get_flight_tracker_config())
         details = []
 
@@ -206,7 +209,14 @@ class FlightApiClient:
         # Start with two or three countries, Slowly role out for more country.
         return self.api.get_airports(countries)
 
-    def get_airport_details(self, codes: str):
+    def __is_valid_code(code):
+        if 4 < len(code) or len(code) < 3:
+            raise ValueError("The code : {code} is valid.")
+
+    def get_airport_details(
+        self,
+        codes: str,
+    ):
         # Build up args
         # Use proxies for each different request
         # Create Future
@@ -214,6 +224,43 @@ class FlightApiClient:
         # get result from the future
         # Extract content from the future
         # Append to a list of details
+        request_params = {"format": "json", "limit": 1, "page": 1}
+        session = requests.Session()
+        session.get(Core.flightradar_base_url)
+        args = []
+        for code in codes:
+            self.__is_valid_code(code)
+            request_params["code"] = code
+            proxy = random.choice(self.proxies)
+            args.append(
+                [
+                    session,
+                    "GET",
+                    Core.api_airport_data_url,
+                    Core.headers,
+                    request_params,
+                    {"http": proxy, "https": proxy},
+                ]
+            )
+
+        futures = generate_futures(self.__make_api_call, args)
+
+        for future in as_completed(futures):
+            # pass
+            try:
+                response: requests.Response = future.result()
+                response.raise_for_status()
+                content = get_content(response)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 429:
+                    console.error("Failed due to status code 429")
+                console.error(f"HTTP Error : {e} : {e.__class__}")
+                console.error(f"Args passed : {args}")
+                console.warning("Decide what to do with error.")
+            except Exception as e:
+                console.error(f"Failed to get airline : {e.__class__} : {e}")
+                console.error(f"Args passed : {args}")
+
         return
 
     # * New methods above this, below need to be removed
