@@ -47,6 +47,10 @@ def get_content(response: Response) -> Union[Dict, bytes]:
     encoding = response.headers.get("Content-Encoding", "")
     content_type = response.headers["Content-Type"]
 
+    print(content)
+    print(encoding)
+    print(content_type)
+
     try:
         content = __content_encodings[encoding](content)
     except Exception:
