@@ -8,6 +8,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from src.core.logger import console
+
 
 def create_db_engine(
     user: str,
@@ -23,7 +25,7 @@ def create_db_engine(
     try:
         return create_engine(url, echo=echo)
     except Exception as e:
-        print(f"Failed to crete database engine. : {e.__class__} : {e}")
+        console.error(f"Failed to crete database engine. : {e.__class__} : {e}")
         raise e
 
 

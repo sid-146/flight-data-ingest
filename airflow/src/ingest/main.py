@@ -21,12 +21,13 @@ from src.db.models.monitoring_models import ProcessRunLog
 
 from src.core.flight_api import FlightApiClient
 from src.core.s3_client import S3Client
+from src.core.logger import console
 
 
 def insert_log_entry():
-    print("Starting Ingestion DAG Process")
-    print("Starting Insert Log Entry Task")
-    print("Inserting Log Record.")
+    console.info("Starting Ingestion DAG Process")
+    console.info("Starting Insert Log Entry Task")
+    console.info("Inserting Log Record.")
 
     monitoring_client = MonitoringClient()
     new_p = ProcessRunLog(dag_name="Ingestion DAG", status="Running")
@@ -42,16 +43,16 @@ def insert_log_entry():
     if not isinstance(results, list):
         results = [results]
     for results in results:
-        print(results.to_dict())
+        console.info(results.to_dict())
 
     # results = (
     #     monitoring_client.query(ProcessRunLog).update({"status": "completed"}).all()
     # )
 
     # for result in results:
-    #     print("result : ", result.to_dict())
+    #     console.info("result : ", result.to_dict())
 
-    # print("")
+    # console.info("")
 
 
 def update_monitoring_record(model, update_dict: dict, _id):
@@ -63,19 +64,19 @@ def update_monitoring_record(model, update_dict: dict, _id):
 
 
 def ingest_data():
-    print("Starting Data Ingestion task.")
+    console.info("Starting Data Ingestion task.")
     api = FlightApiClient()
 
     try:
         airlines = api.get_airlines()
-        print(f"Got {len(airlines)} airlines.")
+        console.info(f"Got {len(airlines)} airlines.")
         flights = api.get_airline_flights(airlines[:10])
-        print(f"Got {len(flights)} flights")
+        console.info(f"Got {len(flights)} flights")
         details = api.get_flight_details(flights)
-        print(f"Got Details for flight : {len(details)}")
+        console.info(f"Got Details for flight : {len(details)}")
     except Exception as e:
-        print(traceback.print_exc())
-        print(f"Failed to ingest data with : {e.__class__} : {e}")
+        console.info(traceback.console.info_exc())
+        console.info(f"Failed to ingest data with : {e.__class__} : {e}")
         update_monitoring_record(
             ProcessRunLog,
             {
