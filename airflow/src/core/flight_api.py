@@ -4,6 +4,7 @@ import random
 import traceback
 from abc import ABC
 import dataclasses
+from copy import deepcopy
 
 import requests
 from typing import List, Literal
@@ -140,16 +141,16 @@ class FlightApiClient:
     def __make_api_call(
         session: requests.Session,
         method: Literal["POST", "GET"],
-        url,
+        base_url,
         headers,
         params,
         proxy,
     ):
-        url = url + "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
+        # url = base_url + "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
         response = session.request(
             method=method,
-            url=url,  # Todo: url might be causing issue of not returning any flights
-            # params=params,
+            url=base_url,  # Todo: url might be causing issue of not returning any flights
+            params=params,
             headers=headers,
             proxies=proxy,
         )
@@ -159,12 +160,13 @@ class FlightApiClient:
         flights = []
         session = requests.Session()
         session.get(Core.flightradar_base_url, headers=Core.headers)
-        request_params = self.api.get_flight_tracker_config().__dict__
-        url = Core.data_live_base_url + "/zones/fcgi/feed.js"
+        # url = Core.data_live_base_url + "/zones/fcgi/feed.js"
+        url = Core.real_time_flight_tracker_data_url
         args = []
+        base_params = self.api.get_flight_tracker_config().__dict__
         for airline in airlines:
+            request_params = deepcopy(base_params)
             request_params["airline"] = airline["ICAO"]
-            print(request_params)
             # _proxy = random.choice(self.proxies)
             _proxy = self.fp.get()
             args.append(
@@ -183,19 +185,16 @@ class FlightApiClient:
             try:
                 args = futures[future]
                 response: requests.Response = future.result()
-                print(response.url)
                 response.raise_for_status()
                 console.info(f"Completed for airline : {args[-2]['airline']}")
                 content = get_content(response)
 
                 for flight_id, flight_info in content.items():
-                    print(flight_info)
                     if not flight_id[0].isnumeric():
                         continue
 
                     flight = Flight(flight_id, flight_info)
                     flights.append(flight)
-                    print(flight)
             except requests.exceptions.HTTPError as e:
                 console.warning(f"Got Status Code : {e.response.status_code}")
                 if e.response.status_code == 429:
