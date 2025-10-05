@@ -6,3 +6,6 @@ class MonitoringClient(BaseDBClient):
     def __init__(self):
         self._schema = "monitoring"
         super().__init__()
+
+    def update_process_log(values: dict):
+        raise NotImplementedError("Yet to implement.")
