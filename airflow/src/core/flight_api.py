@@ -221,6 +221,7 @@ class FlightApiClient:
             url = Core.flight_data_url.format(flight.id)
             args.append(
                 (
+                    session,
                     "GET",
                     url,
                     Core.headers,
