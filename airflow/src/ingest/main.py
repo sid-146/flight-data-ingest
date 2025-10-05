@@ -30,7 +30,9 @@ def insert_log_entry():
     console.info("Inserting Log Record.")
 
     monitoring_client = MonitoringClient()
-    new_p = ProcessRunLog(dag_name="Ingestion DAG", status="Running")
+    new_p = ProcessRunLog(
+        dag_name="data_ingestion_DAG", status="Running", task="insert_log_entry"
+    )
     inserted_id = monitoring_client.insert(new_p)
 
     # Building query using QueryBuilder Class
@@ -72,7 +74,7 @@ def ingest_data():
         console.info(f"Got {len(airlines)} airlines.")
         flights = api.get_airline_flights(airlines[:10])
         console.info(f"Got {len(flights)} flights")
-        details = api.get_flight_details(flights)
+        details = api.get_flight_details(flights[:10])
         console.info(f"Got Details for flight : {len(details)}")
     except Exception as e:
         console.info(traceback.console.info_exc())
