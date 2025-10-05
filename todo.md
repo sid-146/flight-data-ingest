@@ -8,8 +8,8 @@ Todo:
 
 Todo: Code
 
--   Add logger please 😭😭
--   Create a container, if there is issue in calling flight api through container....
+-   [-] Add logger please 😭😭
+-   [-] Create a container, if there is issue in calling flight api through container....
 -   Sort imports
 -   Complete airport details function.
 -   For starting keep the flights and airports counts low.
@@ -26,3 +26,29 @@ Todo: Code
     -   Ingestion Handler
     -   Database Client Handler (Base and schema wise handler)
     -   DAG Creation and scheduling
+
+# Dag to be created
+
+-   ## airline updater dag
+
+    -   ### Tasks
+        -   Insert Process Log
+        -   Fetch all airlines
+        -   Insert/update in airlines table
+        -   Update process log
+
+-   ## Airport updater dag
+
+    -   ### Tasks
+        -   Insert Process Log
+        -   Fetch all airports
+        -   Insert/update in airports table
+        -   Update process log
+
+-   ## Data Ingestion Dag updater
+    -   ### Tasks
+        -   Insert Process Log
+        -   Get all flights
+        -   get all flight details
+        -   Insert/Update in required tables
+        -   Update process log
