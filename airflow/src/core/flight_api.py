@@ -20,20 +20,6 @@ from src.core.utils import generate_futures, get_content
 from fp.fp import FreeProxy
 
 
-# Flight Current Data: https://data-live.flightradar24.com/clickhandler/?flight=3c75b726
-# airlines_data
-
-
-"""
-What to do:
-    - get airlines using FlightRadarAPI
-    - clean airlines (remove navy, air force, army, school, university)
-    - Iterate over all airlines get list of airflow using proxy rotation. -> returns List[Flight]
-    - Iterate over each flight and get flight details using proxy rotation. -> returns List[Details]
-    - Store Data in data.json.gz
-"""
-
-
 class Core(ABC):
     # Base URLs
     api_flightradar_base_url = "https://api.flightradar24.com/common/v1"
@@ -130,7 +116,7 @@ class FlightApiClient:
         ):
             return airline
 
-    def get_airlines(self):
+    def get_airlines(self) -> List[dict]:
         airlines = self.api.get_airlines()
         console.info(f"Airlines before filtering : {len(airlines)}")
         airlines = list(filter(FlightApiClient._airline_criteria_, airlines))
