@@ -9,17 +9,20 @@ from requests import Response
 import brotli
 
 
-def compress(results: list, store_path: str, ratio: int = 5):
-    folder_name = f"flights_data_{datetime.now().strftime('%y_%m_%d_%H_%M_%S')}"
+def compress(results: list, store_path: str, file_prefix: str, ratio: int = 5):
+    folder_name = f"{file_prefix}_{datetime.now().strftime('%y_%m_%d_%H_%M_%S')}"
     path = os.path.join(store_path, folder_name)
     os.makedirs(path, exist_ok=True)
+    filepath = os.path.join(path, "data.json.gz")
     with gzip.open(
-        os.path.join(path, "data.json.gz"),
+        filepath,
         "wt",
         encoding="utf-8",
         compresslevel=ratio,
     ) as f:
         json.dump(results, f, indent=2)
+
+    return filepath
 
 
 def generate_futures(
@@ -54,3 +57,9 @@ def get_content(response: Response) -> Union[Dict, bytes]:
 
     if "application/json" in content_type:
         return json.loads(content)
+
+
+def pull_from_xcom(task_ids, key, **context):
+    # This can be moved to utils or core as it is generalized function.
+    value = context["ti"].xcom_pull(task_ids=task_ids, key=key)
+    return value
