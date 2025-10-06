@@ -56,6 +56,7 @@ class IngestionFileLog(BASE):
         server_default=Sequence("ingestion_file_log_id_seq").next_value(),
     )
     run_id: int = Column(BigInteger, ForeignKey("monitoring.process_run_log.id"))
+    no_records: int = Column(Integer)
     s3_key: str = Column(String)
 
     process_run = relationship("ProcessRunLog", back_populates="files")
