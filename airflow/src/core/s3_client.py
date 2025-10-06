@@ -44,9 +44,9 @@ class S3Client:
         console.info(*[bucket.name for bucket in buckets], sep="\n\t")
 
     def put_compressed_object(
-        self, data: List[dict], bucket_name, put_path, ratio: int = 7
+        self, data: List[dict], bucket_name, put_path, filename, ratio: int = 7
     ):
-        s3_key = os.path.join(put_path, "data.json.gz")
+        s3_key = os.path.join(put_path, filename)
 
         buffer = io.BytesIO()
         with gzip.GzipFile(fileobj=buffer, mode="wb", compresslevel=ratio) as f:
@@ -56,3 +56,7 @@ class S3Client:
         self.s3_client.upload_fileobj(buffer, bucket_name, s3_key)
 
         return f"s3://{bucket_name}/{s3_key}"
+
+    def put_file(self, read_path, s3_key):
+        self.s3_client.upload_file(read_path, self.bucket, s3_key)
+        return f"s3://{self.bucket}/{s3_key}"
