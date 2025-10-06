@@ -128,3 +128,8 @@ SET DEFAULT nextval ('monitoring.ingestion_file_log_id_seq');
 ALTER TABLE monitoring.ingestion_file_log ADD CONSTRAINT ingestion_file_log_pkey PRIMARY KEY (id);
 
 ALTER SEQUENCE monitoring.ingestion_file_log_id_seq OWNED BY monitoring.ingestion_file_log.id;
+
+-- adding column for data_type in monitoring.ingestion_file_log table
+ALTER TABLE monitoring.ingestion_file_log
+ADD COLUMN data_type varchar,
+ADD COLUMN is_processed BOOLEAN DEFAULT False;
