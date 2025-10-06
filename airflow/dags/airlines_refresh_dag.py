@@ -9,6 +9,8 @@ from src.airline_handler.main import (
     upload_s3_task,
 )
 
+from src.housekeeper.main import remove_local_files_task
+
 
 with DAG(
     dag_id="airline_refresh_DAG",
@@ -20,12 +22,23 @@ with DAG(
     process_log_insert_task = PythonOperator(
         task_id="process_log_insert_task", python_callable=insert_log_entry_task
     )
+
     airlines_extraction_task = PythonOperator(
         task_id="refresh_airline_task", python_callable=refresh_airline_task
     )
+
     s3_upload_task = PythonOperator(
         task_id="s3_upload_task", python_callable=upload_s3_task
     )
 
+    local_file_vacuum_task = PythonOperator(
+        task_id="local_file_vacuum_task", python_callable=remove_local_files_task
+    )
 
-process_log_insert_task >> airlines_extraction_task >> s3_upload_task
+
+(
+    process_log_insert_task
+    >> airlines_extraction_task
+    >> s3_upload_task
+    >> local_file_vacuum_task
+)
