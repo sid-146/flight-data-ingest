@@ -1,6 +1,4 @@
 import os
-import traceback
-from datetime import datetime
 
 from src.db.monitoring_db_client import MonitoringClient
 from src.db.models.monitoring_models import ProcessRunLog, IngestionFileLog
@@ -112,8 +110,6 @@ def upload_s3_task(**context):
 
         console.info(f"Got stored path : {local_read_path}")
 
-        print({"bucket": s3_bucket, "access": aws_access_key, "secret": aws_secret_key})
-
         s3_client = S3Client(
             bucket=s3_bucket,
             access_key=aws_access_key,
@@ -128,7 +124,13 @@ def upload_s3_task(**context):
         console.info(f"File Uploaded at path : {s3_path}")
 
         monitoring_client.insert(
-            IngestionFileLog(run_id=_id, s3_key=s3_path, no_records=no_records)
+            IngestionFileLog(
+                run_id=_id,
+                s3_key=s3_path,
+                no_records=no_records,
+                is_processed=False,
+                data_type="airlines",
+            )
         )
         monitoring_client.query(ProcessRunLog).where(ProcessRunLog.id == _id).update(
             {
