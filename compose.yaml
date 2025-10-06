@@ -57,6 +57,53 @@ services:
       - flight-network
 
 
+  spark-master:
+    image: bitnami/spark:3.5.0
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_LOCAL_IP=spark-master
+      - SPARK_DRIVER_HOST=spark-master
+      - SPARK_DRIVER_BIND_ADDRESS=0.0.0.0
+    ports:
+      - "8080:8080" # Spark Master Web UI
+      - "7077:7077" # Spark Master RPC
+    volumes:
+      - ./apps:/opt/spark-apps
+      - ./data:/opt/spark-data
+    networks:
+      - spark-network
+
+  spark-worker-1:
+    image: bitnami/spark:3.5.0
+    container_name: spark-worker-1
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2000m
+      - SPARK_DRIVER_MEMORY=2000m
+    depends_on:
+      - spark-master
+    networks:
+      - spark-network
+
+  spark-worker-2:
+    image: bitnami/spark:3.5.0
+    container_name: spark-worker-2
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2000m
+      - SPARK_DRIVER_MEMORY=2000m
+    depends_on:
+      - spark-master
+    networks:
+      - spark-network
+
 volumes:
   # postgres_data:
   #   driver: local
@@ -74,4 +121,6 @@ volumes:
 
 networks:
   flight-network:
+    driver: bridge
+  spark-network:
     driver: bridge
