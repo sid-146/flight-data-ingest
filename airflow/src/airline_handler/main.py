@@ -3,19 +3,16 @@ import traceback
 from datetime import datetime
 
 from src.db.monitoring_db_client import MonitoringClient
-from src.db.models.monitoring_models import ProcessRunLog
+from src.db.models.monitoring_models import ProcessRunLog, IngestionFileLog
 
 from src.core.logger import console
 from src.core.flight_api import FlightApiClient
-from src.core.utils import pull_from_xcom
+from src.core.utils import pull_from_xcom, compress
+from src.core.s3_client import S3Client
+from src.core.settings import s3_bucket, aws_secret_key, aws_access_key
 
 
-def pull_from_xcom(task_ids, key, **context):
-    # This can be moved to utils or core as it is generalized function.
-    value = context["ti"].xcom_pull(task_ids=task_ids, key=key)
-    return value
-
-
+# Todo: Better logging
 def insert_log_entry_task(**context):
     console.info("Starting Insert Log Entry TASK.")
 
@@ -32,12 +29,6 @@ def insert_log_entry_task(**context):
 
 
 def refresh_airline_task(**context):
-    # Todo: Complete this function to create and store file accordingly.
-    # fetch id for which record was inserted.
-    # Updated process status with current task status.
-    # Get Flight Details using flight client
-    # Store and push to xcom the file path
-    # Update process Status
     try:
         _id = pull_from_xcom("process_log_insert_task", "inserted_id", **context)
 
@@ -46,7 +37,15 @@ def refresh_airline_task(**context):
         f_api = FlightApiClient()
 
         results = (
-            monitoring_client.query(ProcessRunLog).where(ProcessRunLog.id == _id).all()
+            monitoring_client.query(ProcessRunLog)
+            .where(ProcessRunLog.id == _id)
+            .update(
+                {
+                    "status": "Running",
+                    "task": "refresh_airline_task",
+                }
+            )
+            .all()
         )
 
         if not isinstance(results, list):
@@ -62,6 +61,15 @@ def refresh_airline_task(**context):
         else:
             raise ValueError("API call completed but it returned empty list.")
 
+        # creates folder in opt/airflow/store/ so on..
+        store_path = os.path.join("store", "airlines")
+        file_prefix = "airlines"
+
+        filepath = compress(airlines, store_path, file_prefix, 7)
+
+        context["ti"].xcom_push(key="airlines_filepath", value=filepath)
+        context["ti"].xcom_push(key="total_airlines", value=len(airlines))
+
         console.info("Updating status")
         # Todo: this update function can be moved to client
         # Issues: How to send multiple where condition (loop column: value and append to query (How to combination))
@@ -71,25 +79,69 @@ def refresh_airline_task(**context):
             .update(
                 {
                     "status": "Completed",
-                    "task": "airline_extraction_task",
+                    "task": "refresh_airline_task",
                 }
             )
             .all()
         )
-
-        console.info([result.to_dict() for result in results])
-
     except Exception as e:
         console.error(f"Failed to get_airlines : {e.__class__.__name__} : {e}")
         monitoring_client.query(ProcessRunLog).where(ProcessRunLog.id == _id).update(
             {
                 "status": "Failed",
                 "errors": f"Failed to get_airlines : {e.__class__.__name__} : {e}",
-                "task": "airline_extraction_task",
+                "task": "refresh_airline_task",
             }
         ).all()
 
 
 def upload_s3_task(**context):
-    _id = pull_from_xcom("process_log_insert_task", "inserted_id", **context)
-    return _id
+    try:
+        _id = pull_from_xcom("process_log_insert_task", "inserted_id", **context)
+        local_read_path = pull_from_xcom(
+            "refresh_airline_task", "airlines_filepath", **context
+        )
+        no_records = pull_from_xcom("refresh_airline_task", "total_airlines", **context)
+        monitoring_client = MonitoringClient()
+        monitoring_client.query(ProcessRunLog).where(ProcessRunLog.id == _id).update(
+            {
+                "status": "Running",
+                "task": "upload_s3_task",
+            }
+        ).all()
+
+        console.info(f"Got stored path : {local_read_path}")
+
+        print({"bucket": s3_bucket, "access": aws_access_key, "secret": aws_secret_key})
+
+        s3_client = S3Client(
+            bucket=s3_bucket,
+            access_key=aws_access_key,
+            secret_key=aws_secret_key,
+        )
+
+        temp = local_read_path.split("/")[2:]
+        s3_key = os.path.join(*temp)
+
+        s3_path = s3_client.put_file(local_read_path, s3_key)
+
+        console.info(f"File Uploaded at path : {s3_path}")
+
+        monitoring_client.insert(
+            IngestionFileLog(run_id=_id, s3_key=s3_path, no_records=no_records)
+        )
+        monitoring_client.query(ProcessRunLog).where(ProcessRunLog.id == _id).update(
+            {
+                "status": "Completed",
+                "task": "upload_s3_task",
+            }
+        ).all()
+
+    except Exception as e:
+        console.error(f"Failed to upload s3 : {e.__class__} : {e}")
+        monitoring_client.query(ProcessRunLog).where(ProcessRunLog.id == _id).update(
+            {
+                "status": "Failed",
+                "task": "upload_s3_task",
+            }
+        ).all()
