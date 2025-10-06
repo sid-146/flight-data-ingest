@@ -53,14 +53,6 @@ class Core(ABC):
 class FlightApiClient:
     def __init__(self):
         self.api = FlightRadar24API()
-        # Todo:
-
-        # self.proxies = self.__working_proxies()
-        # self.proxies = (
-        #     self.proxies if self.proxies else [FreeProxy().get() for i in range(100)]
-        # )
-
-        # Currently using built in proxy checker
         self.fp = FreeProxy()
         self.proxies = [self.fp.get() for _ in range(100)]
 
@@ -103,6 +95,7 @@ class FlightApiClient:
 
     @staticmethod
     def _airline_criteria_(airline):
+        # Todo: Check this functions behavior
         name = airline["Name"].lower()
         if (
             not (
@@ -135,7 +128,7 @@ class FlightApiClient:
         # url = base_url + "?" + "&".join(["{}={}".format(k, v) for k, v in params.items()])
         response = session.request(
             method=method,
-            url=base_url,  # Todo: url might be causing issue of not returning any flights
+            url=base_url,
             params=params,
             headers=headers,
             proxies=proxy,
