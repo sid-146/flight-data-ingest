@@ -60,3 +60,6 @@ class S3Client:
     def put_file(self, read_path, s3_key):
         self.s3_client.upload_file(read_path, self.bucket, s3_key)
         return f"s3://{self.bucket}/{s3_key}"
+
+    def get_object(self, bucket, key):
+        return

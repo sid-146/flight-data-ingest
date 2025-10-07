@@ -32,7 +32,7 @@ def download_and_load_json_from_s3(s3_bucket: str, s3_key: str):
     obj = s3.get_object(Bucket=s3_bucket, Key=s3_key)
     with gzip.GzipFile(fileobj=obj["Body"]) as gz:
         data = json.loads(gz.read().decode("utf-8"))
-    return dataem
+    return data
 
 
 def transform_data(spark, data):
