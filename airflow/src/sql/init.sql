@@ -132,4 +132,4 @@ ALTER SEQUENCE monitoring.ingestion_file_log_id_seq OWNED BY monitoring.ingestio
 -- adding column for data_type in monitoring.ingestion_file_log table
 ALTER TABLE monitoring.ingestion_file_log
 ADD COLUMN data_type varchar,
-ADD COLUMN is_processed BOOLEAN DEFAULT False;
+ADD COLUMN is_processed varchar DEFAULT 'pending';
