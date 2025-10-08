@@ -1,0 +1,20 @@
+from bitnami/spark:3.5.0
+
+# Switch to root user 
+USER root
+
+RUN apt-get update && apt-get install -y \
+    python3-pip
+    && rm -rf /var/lib/api/lists/*
+
+# Install UV
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh 
+ENV PATH="/root/.local/bin:${PATH}"
+
+COPY ../prproject.toml /pyproject.toml
+
+RUN uv pip compile pyproject.toml -o requirements.txt
+RUN uv pip install -r requirements.txt --system
+
+# Default command (run Spark master)
+CMD ["/run.sh"]
