@@ -1,29 +1,66 @@
-# FROM apache/spark:3.5.1-python3
-# FROM bitnami/spark:3.5.1
-FROM bitnami/spark:3.5.1-debian-12-r25
-# ENV SPARK_VERSION=3.5.1
+# Stage 1: Build Stage - Setup Spark and Java
+FROM python:3.11-slim-bookworm as builder
 
-# Switch to root user 
-USER root
+ENV SPARK_VERSION=3.5.1
+ENV HADOOP_VERSION=3
+ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+ENV SPARK_HOME=/opt/spark
 
-RUN apt-get update && apt-get install -y \
+# Install necessary packages: Java for Spark, curl to download files
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+    openjdk-17-jre-headless \
     curl \
-    python3-pip \
-    && rm -rf /var/lib/api/lists/*
-    
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh 
-ENV PATH="/root/.local/bin:${PATH}"
+    tini && \
+    rm -rf /var/lib/apt/lists/*
 
-# COPY ./airflow/airflow-requirements.txt /tmp/airflow-requirements.txt
-# COPY ./airflow/alembic.ini /opt/airflow/alembic.ini
-# RUN pip install --no-cache-dir -r /tmp/airflow-requirements.txt
 
-# Install UV
+# Download and install Spark
+WORKDIR /tmp
+RUN curl -fsSL "https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz" \
+    | tar -zx --strip-components=1 -C $SPARK_HOME
 
-COPY ../pyproject.toml /pyproject.toml
 
-RUN uv pip compile /pyproject.toml -o requirements.txt
-RUN uv pip install -r requirements.txt --system
+#  ----------------------------------------------------------------------------------
+# Stage 2: Final Image - Python environment
+FROM python:3.11-slim-bookworm
 
-# Default command (run Spark master)
-CMD ["/run.sh"]
+# Set env vars
+ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+ENV SPARK_HOME=/opt/spark
+ENV PATH=$PATH:$SPARK_HOME/bin
+ENV SPARK_MASTER_URL=spark://spark-master:7077
+ENV PYSPARK_PYTHON=/usr/local/bin/python
+
+
+# Create a non-root user for security
+RUN groupadd --system spark && useradd --system --gid spark spark
+USER spark:spark
+
+
+# Copy Java and Spark from the builder stage
+COPY --from=builder /usr/lib/jvm /usr/lib/jvm
+COPY --from=builder /opt/spark /opt/spark
+
+
+# Install uv for Python package management
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/home/spark/.local/bin:${PATH}"
+
+
+# Copy project dependencies and install them
+COPY --chown=spark:spark ../pyproject.toml /home/spark/pyproject.toml
+WORKDIR /home/spark
+RUN uv pip install --no-cache-dir -r <(uv pip compile pyproject.toml)
+
+
+# Copy and set up the entrypoint script
+COPY --chown=spark:spark ./airflow/spark_entrypoint.sh /home/spark/spark_entrypoint.sh
+RUN chmod +x /home/spark/spark_entrypoint.sh
+
+
+# Expose Spark ports
+EXPOSE 8080 7077
+
+# Set the entrypoint to run our script
+ENTRYPOINT ["/home/spark/spark_entrypoint.sh"]
