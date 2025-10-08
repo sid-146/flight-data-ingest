@@ -16,6 +16,9 @@ RUN apt-get update && \
     # header files needed if building psycopg2 from source
     libpq-dev \
     procps \
+    # For handling zipping for spark
+    zip \
+    unzip \
     && rm -rf /var/lib/api/lists/*
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh 
@@ -39,7 +42,7 @@ RUN pip install --no-cache-dir "apache-airflow[postgres]==${AIRFLOW_VERSION}" \
     --constraint ${CONSTRAINT_URL} \
     psycopg2-binary
 
-
+# Todo move this airflow to pyproject toml to handle single file dependency file.
 COPY ./airflow/airflow-requirements.txt /tmp/airflow-requirements.txt
 # COPY ./airflow/alembic.ini /opt/airflow/alembic.ini
 RUN pip install --no-cache-dir -r /tmp/airflow-requirements.txt
