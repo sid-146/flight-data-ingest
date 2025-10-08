@@ -1,19 +1,28 @@
-from bitnami/spark:3.5.0
+# FROM apache/spark:3.5.1-python3
+# FROM bitnami/spark:3.5.1
+FROM bitnami/spark:3.5.1-debian-12-r25
+# ENV SPARK_VERSION=3.5.1
 
 # Switch to root user 
 USER root
 
 RUN apt-get update && apt-get install -y \
-    python3-pip
+    curl \
+    python3-pip \
     && rm -rf /var/lib/api/lists/*
-
-# Install UV
+    
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh 
 ENV PATH="/root/.local/bin:${PATH}"
 
-COPY ../prproject.toml /pyproject.toml
+# COPY ./airflow/airflow-requirements.txt /tmp/airflow-requirements.txt
+# COPY ./airflow/alembic.ini /opt/airflow/alembic.ini
+# RUN pip install --no-cache-dir -r /tmp/airflow-requirements.txt
 
-RUN uv pip compile pyproject.toml -o requirements.txt
+# Install UV
+
+COPY ../pyproject.toml /pyproject.toml
+
+RUN uv pip compile /pyproject.toml -o requirements.txt
 RUN uv pip install -r requirements.txt --system
 
 # Default command (run Spark master)

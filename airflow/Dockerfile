@@ -3,7 +3,7 @@ FROM python:3.12-slim
 # Setting env vars
 ENV AIRFLOW_HOME=/opt/airflow
 ENV AIRFLOW_VERSION=2.10.3
-ENV  PYTHON_VERSION=3.12
+ENV PYTHON_VERSION=3.12
 ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
 
 
