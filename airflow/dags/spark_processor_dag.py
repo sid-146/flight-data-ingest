@@ -6,6 +6,8 @@ from airflow import DAG
 from src.processor.main import insert_log_entry_task, get_pending_jobs_task
 
 
+# todo: add another task to zip the src folder. to be shared to spark,
+
 with DAG(
     dag_id="spark_processor_DAG",
     start_date=datetime(2025, 10, 7),
