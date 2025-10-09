@@ -16,6 +16,7 @@ Todo: Code
 - [ ] Sort imports
 - [ ] Airports details contains more information which is not present in current schema. (Thus Schema update is needed.)
 - [ ] Add .env inside source directory if not present for spark jobs.
+- [ ] To maintain 2 different pyproject toml or requirements.txt file for airflow and spark.
 
 ---
 
