@@ -128,7 +128,7 @@ def upload_s3_task(**context):
                 run_id=_id,
                 s3_key=s3_path,
                 no_records=no_records,
-                is_processed=False,
+                is_processed='pending',
                 data_type="airlines",
             )
         )
