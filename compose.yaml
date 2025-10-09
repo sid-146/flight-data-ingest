@@ -1,18 +1,18 @@
+version: '3.8'
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: postgres
     env_file:
       - .env
+    # NOTE: POSTGRES_USER, POSTGRES_PASSWORD, and POSTGRES_DB should be in your .env file
     environment:
       - POSTGRES_HOST_AUTH_METHOD=password
-      - PGDATA=/var/lib/postgresql/data/pgdata
-    # - POSTGRES_USER=root
-    # - POSTGRES_PASSWORD=root_password #this will override
     ports:
       - "5432:5432"
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data # Changed this not able to make this persistant
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -23,13 +23,8 @@ services:
     networks:
       - flight-network
 
-
-  # use this to connect to the postgres using console.
-  # docker exec -it postgres psql -U airflow_user -d flight_db
-
   airflow:
     build:
-      # context: ./airflow
       dockerfile: ./airflow/Dockerfile
     container_name: airflow-w-pg
     depends_on:
@@ -45,8 +40,8 @@ services:
       - ./airflow/plugins:/opt/airflow/plugins
       - ./airflow/src:/opt/airflow/src
     ports:
-      - "9099:9099"
-      - "8793:8793"
+      - "9099:9099" # Port for Airflow Webserver
+      - "8793:8793" # Port for Airflow Celery Flower
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9099/health"]
       interval: 30s
@@ -56,24 +51,15 @@ services:
     networks:
       - flight-network
 
-
   spark-master:
     build:
-      # context: .
-      dockerfile: ./airflow/Dockerfile.spark
+      dockerfile: ./spark/Dockerfile
     container_name: spark-master
-    environment:
-      - SPARK_MODE=master
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
-      - SPARK_LOCAL_IP=spark-master
-      - SPARK_DRIVER_HOST=spark-master
-      - SPARK_DRIVER_BIND_ADDRESS=0.0.0.0
+    command: master
     ports:
       - "8080:8080" # Spark Master Web UI
       - "7077:7077" # Spark Master RPC
+      - "4040:4040" # Spark application UI
     volumes:
       - ./apps:/opt/spark-apps
       - ./data:/opt/spark-data
@@ -82,14 +68,11 @@ services:
 
   spark-worker-1:
     build:
-      # context: .
-      dockerfile: ./airflow/Dockerfile.spark
+      dockerfile: ./spark/Dockerfile
     container_name: spark-worker-1
+    command: worker spark://spark-master:7077
     environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
       - SPARK_WORKER_MEMORY=2000m
-      - SPARK_DRIVER_MEMORY=2000m
     depends_on:
       - spark-master
     networks:
@@ -97,26 +80,23 @@ services:
 
   spark-worker-2:
     build:
-      # context: .
-      dockerfile: ./airflow/Dockerfile.spark
+      dockerfile: ./spark/Dockerfile
     container_name: spark-worker-2
+    command: worker spark://spark-master:7077
     environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
       - SPARK_WORKER_MEMORY=2000m
-      - SPARK_DRIVER_MEMORY=2000m
     depends_on:
       - spark-master
     networks:
       - flight-network
 
 volumes:
-  # postgres_data:
-  #   driver: local
-  #   driver_opts:
-  #     type: none
-  #     o: bind
-  #     device: F:/docker-images/volumes/pg_data
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: F:/docker-images/volumes/pg_data
   airflow_logs:
     driver: local
     driver_opts:
@@ -124,9 +104,6 @@ volumes:
       o: bind
       device: F:/docker-images/volumes/airflow_logs
 
-
 networks:
   flight-network:
     driver: bridge
-  # spark-network:
-  #   driver: bridge
