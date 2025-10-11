@@ -23,7 +23,7 @@ services:
 
   airflow:
     build:
-      # context: ./airflow
+      context: .
       dockerfile: ./airflow/Dockerfile
     container_name: airflow-w-pg
     depends_on:

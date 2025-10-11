@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "apache-airflow-providers-apache-spark==5.3.2",
     "boto3>=1.40.40",
     "bs4>=0.0.2",
     "flightradarapi>=1.4.0",
