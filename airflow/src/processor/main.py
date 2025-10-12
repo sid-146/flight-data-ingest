@@ -58,3 +58,5 @@ def get_pending_jobs_task(**context):
     monitoring_client.query(ProcessRunLog).where(ProcessRunLog.id == _id).update(
         {"status": "Completed"}
     )
+
+    return records
