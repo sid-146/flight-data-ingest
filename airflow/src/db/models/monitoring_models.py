@@ -58,7 +58,7 @@ class IngestionFileLog(BASE):
     run_id: int = Column(BigInteger, ForeignKey("monitoring.process_run_log.id"))
     no_records: int = Column(Integer)
     s3_key: str = Column(String)
-    is_processed: bool = Column(Boolean)
+    is_processed: str = Column(String)
     data_type: str = Column(String)
 
     process_run = relationship("ProcessRunLog", back_populates="files")
