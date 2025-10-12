@@ -25,12 +25,12 @@ SPARK_PACKAGES = [
 
 # DAG definition
 with DAG(
-    dag_id="spark_processor_DAG",
+    dag_id="spark_processor_S3_to_PG_DAG",
     start_date=datetime(2025, 10, 7),
     schedule="*/45 * * * *",  # runs every 45 minutes
     catchup=False,
-    max_active_tasks=2,  # Limit 2 spark jobs at a time
-    concurrency=2,
+    # max_active_tasks=2,  # Limit 2 spark jobs at a time
+    # concurrency=2,
     tags=["spark", "dynamic"],
 ) as dag:
 
@@ -59,6 +59,8 @@ with DAG(
             lambda record: [
                 f"--s3_uri={record['s3_key']}",
                 f"--job_name={record['data_type']}",
+                f"--run_id={record['run_id']}",
+                f"--file_log_id={record['id']}",
             ]
         ),
     )
