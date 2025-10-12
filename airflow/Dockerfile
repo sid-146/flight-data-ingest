@@ -5,11 +5,13 @@ ENV AIRFLOW_HOME=/opt/airflow
 ENV AIRFLOW_VERSION=2.10.3
 ENV PYTHON_VERSION=3.12
 ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
-
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 
 # Installing system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    # For trigger spark jobs
+    openjdk-21-jre-headless \ 
     build-essential \
     curl \
     git \
@@ -38,7 +40,7 @@ RUN mkdir -p ${AIRFLOW_HOME} && \
     chmod -R 755 ${AIRFLOW_HOME}
 
 
-RUN pip install --no-cache-dir "apache-airflow[postgres]==${AIRFLOW_VERSION}" \
+RUN pip install --no-cache-dir "apache-airflow[postgres,spark]==${AIRFLOW_VERSION}" \
     --constraint ${CONSTRAINT_URL} \
     psycopg2-binary
 
@@ -51,7 +53,7 @@ COPY ./airflow/entrypoint.sh /entrypoint.sh
 COPY ../pyproject.toml /pyproject.toml
 
 RUN uv pip compile pyproject.toml -o requirements.txt
-RUN uv pip install -r requirements.txt --system
+RUN pip install -r requirements.txt
 
 
 RUN chmod +x /entrypoint.sh
