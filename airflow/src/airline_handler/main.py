@@ -126,9 +126,9 @@ def upload_s3_task(**context):
         monitoring_client.insert(
             IngestionFileLog(
                 run_id=_id,
-                s3_key=s3_path,
+                s3_key=s3_key,
                 no_records=no_records,
-                is_processed='pending',
+                is_processed="pending",
                 data_type="airlines",
             )
         )

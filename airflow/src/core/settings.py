@@ -14,3 +14,4 @@ postgres_connection_string = f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_P
 aws_secret_key = os.getenv("AWS_SECRET_KEY")
 aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
 s3_bucket = os.getenv("S3_BUCKET")
+region = os.getenv("REGION")

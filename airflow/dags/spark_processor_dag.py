@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 from airflow.operators.python import PythonOperator
@@ -10,6 +11,17 @@ from src.core.utils import pull_from_xcom
 
 
 # todo: add another task to zip the src folder. to be shared to spark,
+
+job_file_path_map = {
+    "airlines": "/opt/airflow/src/processor/jobs/airlines_processor.py"
+}
+
+SPARK_PACKAGES = [
+    "org.postgresql:postgresql:42.5.0",  # JDBC driver for PostgreSQL
+    "org.apache.hadoop:hadoop-aws:3.3.2",  # S3 connector
+    "com.amazonaws:aws-java-sdk-bundle:1.12.262",  # AWS SDK bundle (dependency for hadoop-aws)
+]
+
 
 # DAG definition
 with DAG(
@@ -34,49 +46,22 @@ with DAG(
         python_callable=get_pending_jobs_task,
     )
 
-    # Step 3: Define a function that creates Spark tasks dynamically
-    def create_spark_task(metadata_record):
-        job_name = metadata_record["data_type"]
-        s3_key = metadata_record["s3_key"]
-
-        return SparkSubmitOperator(
-            task_id=f"spark_{job_name}",
-            application="",  # Path to your Spark script
-            py_files="",  # Zipped Dependencies
-            conn_id="spark_default",
-            conf={
-                "spark.master": "spark://spark-master:7077",  # Spark master URL
-                "spark.submit.deployMode": "cluster",  # Run in cluster mode
-            },
-            application_args=[f"--file_path={s3_key}", f"--job_name={job_name}"],
-        )
-
-    # Step 4: Python function to create tasks after reading from XCom
-    def trigger_dynamic_spark_jobs(**context):
-        """
-        Read list of pending jobs from XCom pushed by get_pending_jobs_task,
-        and dynamically create SparkSubmitOperator tasks.
-        """
-        pending_jobs = pull_from_xcom(
-            task_ids="pending_jobs_task",
-            key="get_pending_jobs_task",
-            **context,
-        )
-
-        if not pending_jobs:
-            console.info("✅ No pending Spark jobs found.")
-            return
-
-        for record in pending_jobs:
-            spark_task = create_spark_task(record)
-            pending_jobs_task >> spark_task
-
-    # Step 5: Create a dynamic task generator
-    dynamic_task_creator = PythonOperator(
-        task_id="dynamic_task_creator",
-        python_callable=trigger_dynamic_spark_jobs,
+    # Step 3: Define SparkSubmitOperator with partial args
+    spark_job_template = SparkSubmitOperator.partial(
+        task_id="spark_job_template",
+        conn_id="spark_default",
+        packages=",".join(SPARK_PACKAGES),
+    ).expand(
+        application=pending_jobs_task.output.map(
+            lambda record: job_file_path_map.get(record["data_type"])
+        ),
+        application_args=pending_jobs_task.output.map(
+            lambda record: [
+                f"--s3_uri={record['s3_key']}",
+                f"--job_name={record['data_type']}",
+            ]
+        ),
     )
 
-    # DAG Dependencies
     # Todo: add zip task
-    process_log_insert_task >> pending_jobs_task >> dynamic_task_creator
+    process_log_insert_task >> pending_jobs_task >> spark_job_template
