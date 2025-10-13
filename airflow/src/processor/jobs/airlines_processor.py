@@ -3,20 +3,62 @@ import os
 import logging
 from typing import Any, Dict, List, Tuple
 
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, DataFrame
 import psycopg2 as pg
 
+from pydantic import computed_field
+from pydantic_settings import BaseSettings
+
 """
-- create spark session
-- Read data from s3
-- Convert to table structure
-- Create a staging table in postgres
+- [x] create spark session
+- [x] Read data from s3
+- [x] Convert to table structure
+- [x] Create a staging table in postgres
 - Load data into postgres staging table
 - Perform upsert from staging to main table
 - Cleanup staging table
 - Log Success/Failure in file ingestion table
 - Log processing log in process_run_log table
 """
+
+
+class Config(BaseSettings):
+    PG_USER: str
+    PG_PASSWORD: str
+    PG_HOST: str
+    PG_PORT: int
+    PG_DB: str
+    AWS_SECRET_KEY: str
+    AWS_ACCESS_KEY_ID: str
+    S3_BUCKET: str
+    AWS_REGION: str
+
+    @property
+    @computed_field
+    def SPARK_JDBC_URL(self) -> str:
+        return f"jdbc:postgresql://{self.PG_HOST}:{self.PG_PORT}/{self.PG_DB}"
+
+    @property
+    @computed_field
+    def PG_CONNECTION_CONFIG(self) -> dict:
+        return {
+            "host": self.PG_HOST,
+            "port": self.PG_PORT,
+            "dbname": self.PG_DB,
+            "user": self.PG_USER,
+            "password": self.PG_PASSWORD,
+        }
+
+    @property
+    @computed_field
+    def SPARK_PG_CONNECTION_CONFIG(self) -> dict:
+        """Need to add dbtable key."""
+        return {
+            "url": self.SPARK_JDBC_URL,
+            "user": self.PG_USER,
+            "password": self.PG_PASSWORD,  # Ideally, fetch this from a secret manager
+            "driver": "org.postgresql.Driver",
+        }
 
 
 # logging.basicConfig(level=logging.INFO)
@@ -103,12 +145,29 @@ def get_update_query(
     return sql, values
 
 
+def get_create_table_query(schema, table):
+    # connection
+    return
+
+
 def execute_query(pg_connection_config, query, values):
     connection = pg.connect(**pg_connection_config)
     cursor = connection.cursor()
     cursor.execute(query, values)
     connection.commit()
     connection.close()
+
+
+def create_and_upload_staging(pg_config: dict, df: DataFrame):
+    df.write.format("jdbc").option("url", pg_config["url"]).option(
+        "dbtable", pg_config["dbtable"]
+    ).option("user", pg_config["user"]).option(
+        "password", pg_config["password"]
+    ).option(
+        "driver", pg_config["driver"]
+    ).mode(
+        "overwrite"
+    ).save()
 
 
 def main():
@@ -119,6 +178,8 @@ def main():
         loaded = load_env()
         if not loaded:
             raise EnvironmentError("Failed to load .env file")
+
+        config = Config()
         parser = argparse.ArgumentParser(description="ETL job: S3 JSON.GZ → Postgres")
         parser.add_argument("--s3_uri", required=True, help="s3 uri stored in database")
         parser.add_argument("--job_name", required=True, help="Spark Application Name")
@@ -127,30 +188,12 @@ def main():
 
         logger.info("Loading environment variables...")
 
-        HOST = "postgres"  # container name
-        PORT = 5432
-        USER = os.getenv("POSTGRES_USER")
-        PASSWORD = os.getenv("POSTGRES_PASSWORD")
-        DB = os.getenv("POSTGRES_DB")
-        aws_secret_key = os.getenv("AWS_SECRET_KEY")
-        aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
-        s3_bucket = os.getenv("S3_BUCKET")
-        region = os.getenv("REGION")
-
-        pg_connection_config = {
-            "host": HOST,
-            "port": PORT,
-            "dbname": DB,
-            "user": USER,
-            "password": PASSWORD,
-        }
-
         args = parser.parse_args()
 
-        appName = args.job_name
-        s3_key = args.s3_uri
-        run_id = args.run_id
-        file_log_id = args.file_log_id
+        # appName = args.job_name
+        # s3_key = args.s3_uri
+        # run_id = args.run_id
+        # file_log_id = args.file_log_id
 
         # Get update query for process_run_log table
         logger.info("Preparing to update process_run_log")
@@ -158,44 +201,32 @@ def main():
             "monitoring",
             "process_run_log",
             {"status": "Running", "task": f"{TASK_ID}"},
-            (("id", "=", run_id),),
+            (("id", "=", args.run_id),),
         )
 
-        execute_query(pg_connection_config, query, values)
+        execute_query(config.PG_CONNECTION_CONFIG, query, values)
         logger.info("Updated process_run_log...")
 
         spark = get_spark_session(
-            appName,
-            region,
-            aws_access_key,
-            aws_secret_key,
+            args.appName,
+            config.AWS_REGION,
+            config.AWS_ACCESS_KEY_ID,
+            config.AWS_SECRET_KEY,
         )
 
-        PG_JDBC_URL = f"jdbc:postgresql://{HOST}:{PORT}/{DB}"
+        # PG_JDBC_URL = f"jdbc:postgresql://{HOST}:{PORT}/{DB}"
         logger.info("Spark session created.")
-        s3_path = f"s3a://{s3_bucket}/{s3_key}"
+        s3_path = f"s3a://{config.S3_BUCKET}/{args.s3_key}"
 
         logger.info("Reading source data...")
         df = read_s3_data(spark, s3_path)
         logger.info(f"Got source data with share : {df.shape}...")
 
-        PG_CONNECTION_PROPERTIES = {
-            "user": USER,
-            "password": PASSWORD,
-            "driver": "org.pos tgresql.Driver",
-        }
-
         logger.info("Reading data from monitoring.process_run_log table...")
 
-        return
-        pg_options = {
-            "url": PG_JDBC_URL,
-            "dbtable": "monitoring.process_run_log",
-            "user": USER,
-            "password": PASSWORD,  # Ideally, fetch this from a secret manager
-            "driver": "org.postgresql.Driver",
-        }
-        read_monitoring_data(spark, pg_options)
+        spark_pg_config = config.SPARK_PG_CONNECTION_CONFIG
+        spark_pg_config["dbtable"] = "monitoring.process_run_log"
+        read_monitoring_data(spark, spark_pg_config)
 
         return
 
