@@ -22,6 +22,10 @@ from pydantic_settings import BaseSettings
 """
 
 
+# logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
 class Config(BaseSettings):
     PG_USER: str
     PG_PASSWORD: str
@@ -59,10 +63,6 @@ class Config(BaseSettings):
             "password": self.PG_PASSWORD,  # Ideally, fetch this from a secret manager
             "driver": "org.postgresql.Driver",
         }
-
-
-# logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 def load_env():
@@ -145,20 +145,63 @@ def get_update_query(
     return sql, values
 
 
-def get_create_table_query(schema, table):
-    # connection
-    return
+def create_staging_table(pg_connection_config, schema, table):
+    query = """
+SELECT
+    column_name,
+    data_type,
+    -- character_maximum_length,
+    -- numeric_precision,
+    -- numeric_scale,
+    -- is_nullable,
+    -- column_default
+FROM
+    information_schema.columns
+WHERE
+    table_schema = %s
+    AND table_name = %s;
+    """
+
+    result = execute_select_query(pg_connection_config, query, [schema, table])
+    column_definitions = [
+        f"{column_name} {data_type}" for column_name, data_type in result
+    ]
+    query = f"""
+    CREATE SCHEMA IF NOT EXISTS staging;
+
+    CREATE TABLE IF NOT EXISTS staging.{table} (
+        {'\n'.join(column_definitions)}
+    );
+    """
+
+    execute_dml_ddl_query(pg_connection_config, query)
 
 
-def execute_query(pg_connection_config, query, values):
+def execute_dml_ddl_query(pg_connection_config, query, values):
     connection = pg.connect(**pg_connection_config)
     cursor = connection.cursor()
-    cursor.execute(query, values)
+    if values:
+        cursor.execute(query, values)
+    else:
+        cursor.execute(query)
     connection.commit()
     connection.close()
 
 
-def create_and_upload_staging(pg_config: dict, df: DataFrame):
+def execute_select_query(pg_connection_config, query, values=None):
+    connection = pg.connect(**pg_connection_config)
+    cursor = connection.cursor()
+    if values:
+        result = cursor.execute(query, values)
+    else:
+        result = cursor.execute(query)
+    connection.commit()
+    connection.close()
+
+    return result
+
+
+def write_staging(pg_config: dict, df: DataFrame):
     df.write.format("jdbc").option("url", pg_config["url"]).option(
         "dbtable", pg_config["dbtable"]
     ).option("user", pg_config["user"]).option(
@@ -168,6 +211,10 @@ def create_and_upload_staging(pg_config: dict, df: DataFrame):
     ).mode(
         "overwrite"
     ).save()
+
+
+def execute_upsert_query():
+    return
 
 
 def main():
@@ -190,11 +237,6 @@ def main():
 
         args = parser.parse_args()
 
-        # appName = args.job_name
-        # s3_key = args.s3_uri
-        # run_id = args.run_id
-        # file_log_id = args.file_log_id
-
         # Get update query for process_run_log table
         logger.info("Preparing to update process_run_log")
         query, values = get_update_query(
@@ -204,7 +246,7 @@ def main():
             (("id", "=", args.run_id),),
         )
 
-        execute_query(config.PG_CONNECTION_CONFIG, query, values)
+        execute_dml_ddl_query(config.PG_CONNECTION_CONFIG, query, values)
         logger.info("Updated process_run_log...")
 
         spark = get_spark_session(
@@ -222,11 +264,17 @@ def main():
         df = read_s3_data(spark, s3_path)
         logger.info(f"Got source data with share : {df.shape}...")
 
-        logger.info("Reading data from monitoring.process_run_log table...")
+        logger.info("Creating staging table if not exists.")
+        create_staging_table(config.PG_CONNECTION_CONFIG, "flight_data", "airlines")
 
-        spark_pg_config = config.SPARK_PG_CONNECTION_CONFIG
-        spark_pg_config["dbtable"] = "monitoring.process_run_log"
-        read_monitoring_data(spark, spark_pg_config)
+        logger.info("Created staging table.")
+
+        # Write staging table.
+        pg_config = config.SPARK_PG_CONNECTION_CONFIG
+        pg_config["dbtable"] = "staging.airlines"
+        write_staging(pg_config, df)
+
+        perform_upsert_query()
 
         return
 
