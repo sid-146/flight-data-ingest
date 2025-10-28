@@ -129,7 +129,7 @@ def upload_s3_task(**context):
                 s3_key=s3_key,
                 no_records=no_records,
                 is_processed="pending",
-                data_type="airlines",
+                data_type="airline",
             )
         )
         monitoring_client.query(ProcessRunLog).where(ProcessRunLog.id == _id).update(

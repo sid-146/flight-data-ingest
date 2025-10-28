@@ -13,7 +13,7 @@ from src.core.utils import pull_from_xcom
 # todo: add another task to zip the src folder. to be shared to spark,
 
 job_file_path_map = {
-    "airlines": "/opt/airflow/src/processor/jobs/airlines_processor.py"
+    "airline": "/opt/airflow/src/processor/jobs/airlines_processor.py"
 }
 
 SPARK_PACKAGES = [
