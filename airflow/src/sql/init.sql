@@ -131,13 +131,14 @@ ALTER SEQUENCE monitoring.ingestion_file_log_id_seq OWNED BY monitoring.ingestio
 
 -- adding column for data_type in monitoring.ingestion_file_log table
 ALTER TABLE monitoring.ingestion_file_log
-ADD COLUMN data_type varchar,
-ADD COLUMN is_processed varchar DEFAULT 'pending';
+ADD COLUMN IF NOT EXISTS data_type varchar,
+ADD COLUMN IF NOT EXISTS is_processed varchar DEFAULT 'pending';
 
 -- Alter airlines tables
 ALTER TABLE flight_data.airline
 ADD COLUMN IF NOT EXISTS record_created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,
-ADD COLUMN IF NOT EXISTS record_updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;
+ADD COLUMN IF NOT EXISTS record_updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN IF NOT EXISTS n_aircraft BIGINT;
 
 -- -- Added trigger function
 -- CREATE
@@ -147,8 +148,6 @@ ADD COLUMN IF NOT EXISTS record_updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAM
 -- RETURN NEW;
 -- END;
 -- -- $$ LANGUAGE plpgsql;
-
-
 -- Added Trigger
 -- CREATE TRIGGER set_timestamp BEFORE
 -- UPDATE ON flight_data.airlines FOR EACH ROW EXECUTE FUNCTION flight_data.set_updated_at ();
